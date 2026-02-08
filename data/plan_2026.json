@@ -2,69 +2,13 @@
   "year": 2026,
   "mode": "bootstrap",
   "selected_plants": [
-    "Collards",
-    "Cilantro",
-    "Broccoli",
-    "Basil",
-    "Soya Beans",
-    "Onions",
-    "Cucumber",
-    "Celery",
-    "Borage",
     "Tomatoes",
-    "Peas",
-    "Eggplant",
-    "Beet",
-    "Kale",
-    "Beans",
-    "Asparagus",
-    "Radish",
-    "Rosemary"
+    "Corn",
+    "Lettuce",
+    "Radish"
   ],
   "timeline": {
     "1": [
-      {
-        "plant": "Collards",
-        "start": "2026-02-01",
-        "end": "2026-04-12",
-        "method": "direct_sow"
-      },
-      {
-        "plant": "Soya Beans",
-        "start": "2026-05-15",
-        "end": "2026-08-13",
-        "method": "direct_sow"
-      }
-    ],
-    "2": [
-      {
-        "plant": "Cilantro",
-        "start": "2026-03-01",
-        "end": "2026-04-15",
-        "method": "direct_sow"
-      },
-      {
-        "plant": "Celery",
-        "start": "2026-05-15",
-        "end": "2026-08-23",
-        "method": "transplant"
-      }
-    ],
-    "3": [
-      {
-        "plant": "Kale",
-        "start": "2026-02-01",
-        "end": "2026-04-07",
-        "method": "direct_sow"
-      },
-      {
-        "plant": "Broccoli",
-        "start": "2026-04-15",
-        "end": "2026-07-04",
-        "method": "transplant"
-      }
-    ],
-    "4": [
       {
         "plant": "Radish",
         "start": "2026-02-01",
@@ -72,72 +16,34 @@
         "method": "direct_sow"
       },
       {
-        "plant": "Onions",
-        "start": "2026-03-15",
-        "end": "2026-06-23",
-        "method": "direct_sow"
-      }
-    ],
-    "5": [
-      {
         "plant": "Tomatoes",
         "start": "2026-04-15",
         "end": "2026-07-24",
         "method": "transplant"
       }
     ],
-    "6": [
+    "2": [
       {
-        "plant": "Eggplant",
-        "start": "2026-05-15",
-        "end": "2026-08-03",
+        "plant": "Lettuce",
+        "start": "2026-03-15",
+        "end": "2026-05-04",
         "method": "transplant"
-      }
-    ],
-    "7": [
-      {
-        "plant": "Beet",
-        "start": "2026-04-01",
-        "end": "2026-05-31",
-        "method": "direct_sow"
       },
       {
-        "plant": "Peas",
-        "start": "2026-06-15",
-        "end": "2026-08-19",
-        "method": "direct_sow"
-      }
-    ],
-    "8": [
-      {
-        "plant": "Borage",
-        "start": "2026-04-01",
-        "end": "2026-05-26",
-        "method": "direct_sow"
-      },
-      {
-        "plant": "Beans",
-        "start": "2026-06-02",
-        "end": "2026-08-06",
-        "method": "direct_sow"
-      }
-    ],
-    "9": [
-      {
-        "plant": "Basil",
+        "plant": "Corn",
         "start": "2026-05-15",
-        "end": "2026-07-24",
-        "method": "transplant"
+        "end": "2026-08-08",
+        "method": "direct_sow"
       }
     ],
-    "10": [
-      {
-        "plant": "Cucumber",
-        "start": "2026-05-15",
-        "end": "2026-07-19",
-        "method": "transplant"
-      }
-    ],
+    "3": [],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "9": [],
+    "10": [],
     "11": [],
     "12": [],
     "13": [],
@@ -146,613 +52,67 @@
   },
   "assigned": [
     {
-      "plant": "Collards",
-      "plot_id": 1,
-      "start": "2026-02-01",
-      "end": "2026-04-12",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Cilantro",
-      "plot_id": 2,
-      "start": "2026-03-01",
-      "end": "2026-04-15",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Kale",
-      "plot_id": 3,
-      "start": "2026-02-01",
-      "end": "2026-04-07",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Broccoli",
-      "plot_id": 3,
-      "start": "2026-04-15",
-      "end": "2026-07-04",
-      "method": "transplant"
-    },
-    {
-      "plant": "Soya Beans",
-      "plot_id": 1,
-      "start": "2026-05-15",
-      "end": "2026-08-13",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Onions",
-      "plot_id": 4,
-      "start": "2026-03-15",
-      "end": "2026-06-23",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Celery",
-      "plot_id": 2,
-      "start": "2026-05-15",
-      "end": "2026-08-23",
-      "method": "transplant"
-    },
-    {
       "plant": "Tomatoes",
-      "plot_id": 5,
+      "plot_id": 1,
       "start": "2026-04-15",
       "end": "2026-07-24",
       "method": "transplant"
     },
     {
-      "plant": "Eggplant",
-      "plot_id": 6,
+      "plant": "Corn",
+      "plot_id": 2,
       "start": "2026-05-15",
-      "end": "2026-08-03",
+      "end": "2026-08-08",
+      "method": "direct_sow"
+    },
+    {
+      "plant": "Lettuce",
+      "plot_id": 2,
+      "start": "2026-03-15",
+      "end": "2026-05-04",
       "method": "transplant"
-    },
-    {
-      "plant": "Borage",
-      "plot_id": 8,
-      "start": "2026-04-01",
-      "end": "2026-05-26",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Beet",
-      "plot_id": 7,
-      "start": "2026-04-01",
-      "end": "2026-05-31",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Beans",
-      "plot_id": 8,
-      "start": "2026-06-02",
-      "end": "2026-08-06",
-      "method": "direct_sow"
-    },
-    {
-      "plant": "Basil",
-      "plot_id": 9,
-      "start": "2026-05-15",
-      "end": "2026-07-24",
-      "method": "transplant"
-    },
-    {
-      "plant": "Cucumber",
-      "plot_id": 10,
-      "start": "2026-05-15",
-      "end": "2026-07-19",
-      "method": "transplant"
-    },
-    {
-      "plant": "Peas",
-      "plot_id": 7,
-      "start": "2026-06-15",
-      "end": "2026-08-19",
-      "method": "direct_sow"
     },
     {
       "plant": "Radish",
-      "plot_id": 4,
+      "plot_id": 1,
       "start": "2026-02-01",
       "end": "2026-03-03",
       "method": "direct_sow"
     }
   ],
-  "unassigned_plants": [
-    "Asparagus",
-    "Rosemary"
-  ],
-  "adjacency_events": [
-    {
-      "plot_a": 5,
-      "plot_b": 8,
-      "plant_a": "Tomatoes",
-      "plant_b": "Borage",
-      "overlap_start": "2026-04-15",
-      "overlap_end": "2026-05-26",
-      "compatibility": 2
-    },
-    {
-      "plot_a": 5,
-      "plot_b": 8,
-      "plant_a": "Tomatoes",
-      "plant_b": "Beans",
-      "overlap_start": "2026-06-02",
-      "overlap_end": "2026-07-24",
-      "compatibility": 2
-    },
-    {
-      "plot_a": 5,
-      "plot_b": 6,
-      "plant_a": "Tomatoes",
-      "plant_b": "Eggplant",
-      "overlap_start": "2026-05-15",
-      "overlap_end": "2026-07-24",
-      "compatibility": 0
-    },
-    {
-      "plot_a": 6,
-      "plot_b": 8,
-      "plant_a": "Eggplant",
-      "plant_b": "Borage",
-      "overlap_start": "2026-05-15",
-      "overlap_end": "2026-05-26",
-      "compatibility": 1
-    },
-    {
-      "plot_a": 6,
-      "plot_b": 8,
-      "plant_a": "Eggplant",
-      "plant_b": "Beans",
-      "overlap_start": "2026-06-02",
-      "overlap_end": "2026-08-03",
-      "compatibility": 2
-    },
-    {
-      "plot_a": 6,
-      "plot_b": 7,
-      "plant_a": "Eggplant",
-      "plant_b": "Beet",
-      "overlap_start": "2026-05-15",
-      "overlap_end": "2026-05-31",
-      "compatibility": 0
-    },
-    {
-      "plot_a": 6,
-      "plot_b": 7,
-      "plant_a": "Eggplant",
-      "plant_b": "Peas",
-      "overlap_start": "2026-06-15",
-      "overlap_end": "2026-08-03",
-      "compatibility": 2
-    },
-    {
-      "plot_a": 7,
-      "plot_b": 8,
-      "plant_a": "Beet",
-      "plant_b": "Borage",
-      "overlap_start": "2026-04-01",
-      "overlap_end": "2026-05-26",
-      "compatibility": 0
-    },
-    {
-      "plot_a": 7,
-      "plot_b": 8,
-      "plant_a": "Peas",
-      "plant_b": "Beans",
-      "overlap_start": "2026-06-15",
-      "overlap_end": "2026-08-06",
-      "compatibility": 2
-    },
-    {
-      "plot_a": 8,
-      "plot_b": 10,
-      "plant_a": "Borage",
-      "plant_b": "Cucumber",
-      "overlap_start": "2026-05-15",
-      "overlap_end": "2026-05-26",
-      "compatibility": 1
-    },
-    {
-      "plot_a": 8,
-      "plot_b": 10,
-      "plant_a": "Beans",
-      "plant_b": "Cucumber",
-      "overlap_start": "2026-06-02",
-      "overlap_end": "2026-07-19",
-      "compatibility": 1
-    },
-    {
-      "plot_a": 9,
-      "plot_b": 10,
-      "plant_a": "Basil",
-      "plant_b": "Cucumber",
-      "overlap_start": "2026-05-15",
-      "overlap_end": "2026-07-19",
-      "compatibility": 0
-    }
-  ],
-  "score": 13,
+  "unassigned_plants": [],
+  "adjacency_events": [],
+  "score": 0,
   "compatibility_matrix": {
     "plants": [
-      "Collards",
-      "Cilantro",
-      "Broccoli",
-      "Basil",
-      "Soya Beans",
-      "Onions",
-      "Cucumber",
-      "Celery",
-      "Borage",
       "Tomatoes",
-      "Peas",
-      "Eggplant",
-      "Beet",
-      "Kale",
-      "Beans",
-      "Asparagus",
-      "Radish",
-      "Rosemary"
+      "Corn",
+      "Lettuce",
+      "Radish"
     ],
     "scores": [
       [
         0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        0,
         -3,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        1
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        1,
-        1,
-        0,
-        2,
-        -6,
-        0,
-        2,
-        1,
-        0,
-        -3,
-        1,
-        0
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        1,
-        0,
-        2,
-        1,
-        2,
-        2,
-        0,
-        0,
-        1,
-        1,
-        1,
-        2,
-        0
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        1,
-        2,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0,
-        1,
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        2,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        -3,
-        2,
-        0,
-        2,
-        2,
-        1,
-        2,
-        0,
-        1,
-        0,
-        0,
-        -3,
-        2,
-        2,
-        1,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        -6,
-        2,
-        1,
-        0,
-        1,
-        0,
-        2,
-        0,
-        0,
-        2,
-        0,
-        1,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        2,
-        0,
-        0,
-        0,
-        2,
-        1,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        1,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        0,
-        -3,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        1
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        1,
-        2,
-        0,
-        2,
-        2,
-        2,
-        0,
-        1,
-        0,
-        0,
         1,
         1
       ],
       [
-        0,
-        1,
-        0,
-        2,
-        0,
         -3,
-        1,
-        0,
-        0,
-        2,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         0,
         0
       ],
       [
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        2,
-        0,
-        0,
-        1,
-        1,
-        0,
-        1,
-        0,
         1,
         0,
         0,
-        0
+        2
       ],
       [
-        0,
-        0,
         1,
         0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0,
+        2,
         0
       ]
     ]

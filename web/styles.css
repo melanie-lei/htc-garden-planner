@@ -217,6 +217,7 @@ button.danger:hover {
   padding: 20px;
   border: 1px dashed #cbb68f;
   margin-top: 16px;
+  overflow: auto;
 }
 
 .legend {
@@ -260,9 +261,7 @@ button.danger:hover {
   position: absolute;
   top: 8px;   /* match grid padding */
   left: 8px;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
-  object-fit: fill;
+  height: auto;
   pointer-events: none;
   z-index: 0;
   border-radius: 8px;

@@ -115,17 +115,21 @@ class GridState:
 
     def paint_cells(self, cells: list[dict], value: int | None) -> dict:
         default = None if value is None else _coerce(value)
-        with self._lock:
-            g = self._grid
-            for cell in cells:
-                r, c = int(cell.get("row", -1)), int(cell.get("col", -1))
-                if not (0 <= r < g.height and 0 <= c < g.width):
-                    continue
-                v = cell.get("value", default)
-                if v is None:
-                    continue
-                g.cells[r][c] = _coerce(v)
-        return self.get_state()
+        if not cells:
+            return {"ok": True}
+        chunk_size = 2000
+        for i in range(0, len(cells), chunk_size):
+            with self._lock:
+                g = self._grid
+                for cell in cells[i:i + chunk_size]:
+                    r, c = int(cell.get("row", -1)), int(cell.get("col", -1))
+                    if not (0 <= r < g.height and 0 <= c < g.width):
+                        continue
+                    v = cell.get("value", default)
+                    if v is None:
+                        continue
+                    g.cells[r][c] = _coerce(v)
+        return {"ok": True}
 
     def fill_region(self, row: int, col: int, value: int) -> dict:
         value = _coerce(value)
@@ -226,6 +230,27 @@ def _coerce(value: int) -> int:
     return max(0, min(255, value))
 
 
+def _normalize_cells(cells) -> list[list[int]] | None:
+    if not isinstance(cells, list) or not cells:
+        return None
+    rows = []
+    for row in cells:
+        if not isinstance(row, list):
+            return None
+        rows.append([_coerce(v) for v in row])
+    width = len(rows[0]) if rows else 0
+    if width == 0:
+        return None
+    normalized = []
+    for row in rows:
+        if len(row) < width:
+            row = row + [FarmGrid.UNASSIGNED] * (width - len(row))
+        elif len(row) > width:
+            row = row[:width]
+        normalized.append(row)
+    return normalized
+
+
 def _resolve_path(filename: str | None) -> str:
     if not filename:
         return _DEFAULT_GRID_PATH
@@ -304,14 +329,19 @@ def get_background_data_url() -> str | None:
 # .farm file helpers  (ZIP containing grid.csv, metadata.json, image)
 # -------------------------------------------------------------------
 
-def export_farm(metadata: dict) -> bytes:
+def export_farm(metadata: dict, grid: dict | None = None) -> bytes:
     """Create a .farm ZIP archive in memory and return the raw bytes."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         # 1. grid.csv
-        state = GRID_STATE.get_state()
+        cells = None
+        if isinstance(grid, dict):
+            cells = _normalize_cells(grid.get("cells"))
+        if cells is None:
+            state = GRID_STATE.get_state()
+            cells = state["cells"]
         csv_lines = []
-        for row in state["cells"]:
+        for row in cells:
             csv_lines.append(",".join(str(v) for v in row))
         zf.writestr("grid.csv", "\n".join(csv_lines) + "\n")
 
@@ -403,14 +433,16 @@ class Handler(SimpleHTTPRequestHandler):
 
             # Export returns binary, not JSON
             if path == "/api/export":
-                data = export_farm(body.get("metadata", {}))
+                data = export_farm(body.get("metadata", {}), body.get("grid"))
                 return self._binary(data, "application/zip", "farm.farm")
 
             result = self._route(path, body)
             self._json(result)
         except FileNotFoundError as e:
+            print(f"[error] {path}: {e}", file=sys.stderr)
             self._json({"error": str(e)}, 404)
         except Exception as e:
+            print(f"[error] {path}: {e}", file=sys.stderr)
             self._json({"error": str(e)}, 400)
 
     def _route(self, path: str, body: dict) -> dict:
@@ -419,8 +451,9 @@ class Handler(SimpleHTTPRequestHandler):
                 body.get("width", 10), body.get("height", 10),
                 body.get("fill", FarmGrid.INVALID))
         if path == "/api/paint":
-            return GRID_STATE.paint_cells(body.get("cells", []),
-                                          body.get("value"))
+            GRID_STATE.paint_cells(body.get("cells", []),
+                                   body.get("value"))
+            return {"ok": True}
         if path == "/api/fill":
             return GRID_STATE.fill_region(
                 int(body.get("row", -1)), int(body.get("col", -1)),

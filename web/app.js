@@ -17,6 +17,8 @@ const bgUploadBtn     = document.getElementById("bg-upload-btn");
 const bgFileInput     = document.getElementById("bg-file-input");
 const bgClearBtn      = document.getElementById("bg-clear-btn");
 const bgOpacityInput  = document.getElementById("bg-opacity");
+const bgWidthInput    = document.getElementById("bg-width");
+const bgWidthVal      = document.getElementById("bg-width-val");
 
 // Plot Assignment view
 const plotListEl      = document.getElementById("plot-list");
@@ -61,6 +63,7 @@ let state = {
   cells: [],
   cellSize: 26,
   bgOpacity: 30,
+  bgImgWidth: 400,
   bgDataUrl: null,
 };
 
@@ -75,23 +78,82 @@ let currentPlan    = null;
 let isPainting     = false;
 let activeGrid     = null;   // "shape" | "plot"
 let pending        = new Map();
-let flushTimer     = null;
+let flushInFlight  = null;
+const PAINT_BATCH_SIZE = 2000;
 
 // ===================================================================
 // Helpers
 // ===================================================================
 
-async function postJson(url, payload) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
+async function postJson(url, payload, options = {}) {
+  const timeoutMs = options.timeoutMs;
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller ? controller.signal : undefined,
+    });
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      if (!res.ok) throw new Error(text);
+      throw new Error("Invalid JSON response");
+    }
+  }
+
+  if (!res.ok) {
+    const msg = data && data.error ? data.error : (text || `${res.status} ${res.statusText}`);
+    throw new Error(msg);
+  }
+  if (data && data.error) throw new Error(data.error);
   return data;
 }
 
+async function fetchBlobWithTimeout(url, options = {}, timeoutMs = null) {
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let res;
+  try {
+    res = await fetch(url, { ...options, signal: controller ? controller.signal : undefined });
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = `${res.status} ${res.statusText}`;
+      try {
+        const data = JSON.parse(text);
+        if (data && data.error) msg = data.error;
+        else if (text) msg = text;
+      } catch (err) {
+        if (text) msg = text;
+      }
+      throw new Error(msg);
+    }
+    return await res.blob();
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 function plotColor(id) {
   return `hsl(${(id * 47) % 360}, 65%, 75%)`;
 }
@@ -100,6 +162,45 @@ function plantColor(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return `hsl(${h % 360}, 55%, 75%)`;
+}
+
+function fillRegionLocal(row, col, value) {
+  if (row < 0 || col < 0 || row >= state.height || col >= state.width) {
+    return [];
+  }
+  const target = state.cells[row][col];
+  if (target === value) return [];
+
+  const q = [[row, col]];
+  const changed = [];
+  state.cells[row][col] = value;
+  changed.push([row, col]);
+
+  for (let i = 0; i < q.length; i++) {
+    const [r, c] = q[i];
+    if (r > 0 && state.cells[r - 1][c] === target) {
+      state.cells[r - 1][c] = value;
+      changed.push([r - 1, c]);
+      q.push([r - 1, c]);
+    }
+    if (r + 1 < state.height && state.cells[r + 1][c] === target) {
+      state.cells[r + 1][c] = value;
+      changed.push([r + 1, c]);
+      q.push([r + 1, c]);
+    }
+    if (c > 0 && state.cells[r][c - 1] === target) {
+      state.cells[r][c - 1] = value;
+      changed.push([r, c - 1]);
+      q.push([r, c - 1]);
+    }
+    if (c + 1 < state.width && state.cells[r][c + 1] === target) {
+      state.cells[r][c + 1] = value;
+      changed.push([r, c + 1]);
+      q.push([r, c + 1]);
+    }
+  }
+
+  return changed;
 }
 
 function dayToDate(dayOfYear, year) {
@@ -170,16 +271,34 @@ async function fetchGrid() {
 
 function queueCell(row, col, value) {
   pending.set(`${row},${col}`, { row, col, value });
-  if (!flushTimer) flushTimer = setTimeout(flushPending, 120);
 }
 
-async function flushPending() {
-  clearTimeout(flushTimer);
-  flushTimer = null;
+async function flushPending(options = {}) {
+  if (flushInFlight) {
+    await flushInFlight;
+  }
   if (pending.size === 0) return;
   const cells = [...pending.values()];
   pending.clear();
-  await postJson("/api/paint", { cells });
+  const timeoutMs = options.timeoutMs ?? 15000;
+  const batchSize = options.batchSize ?? PAINT_BATCH_SIZE;
+  const req = (async () => {
+    for (let i = 0; i < cells.length; i += batchSize) {
+      const batch = cells.slice(i, i + batchSize);
+      await postJson("/api/paint", { cells: batch }, { timeoutMs });
+    }
+  })();
+  flushInFlight = req;
+  try {
+    await req;
+  } catch (err) {
+    for (const cell of cells) {
+      pending.set(`${cell.row},${cell.col}`, cell);
+    }
+    throw err;
+  } finally {
+    if (flushInFlight === req) flushInFlight = null;
+  }
 }
 
 // ===================================================================
@@ -192,18 +311,54 @@ function setGridLayout(gridEl) {
   gridEl.style.gridTemplateColumns = `repeat(${state.width}, var(--cell-size))`;
 }
 
+function getGridRenderedWidth() {
+  return state.width * state.cellSize + (state.width - 1) * 2 + 16;
+}
+
 function updateBgImages() {
   const opacity = state.bgOpacity / 100;
+  const imgW = state.bgImgWidth;
   for (const img of [shapeBgImg, plotBgImg]) {
     if (state.bgDataUrl) {
       img.src = state.bgDataUrl;
       img.style.display = "block";
       img.style.opacity = opacity;
+      img.style.width = imgW + "px";
+      img.style.height = "auto";
     } else {
       img.style.display = "none";
     }
   }
+  updateGridWrapSizing();
 }
+
+function updateGridWrapSizing() {
+  const wraps = [
+    document.getElementById("shape-grid-wrap"),
+    document.getElementById("plot-grid-wrap"),
+  ];
+
+  if (!state.bgDataUrl) {
+    for (const wrap of wraps) {
+      wrap.style.minWidth = "";
+      wrap.style.minHeight = "";
+    }
+    return;
+  }
+
+  const img = shapeBgImg;
+  if (img.naturalWidth > 0) {
+    const ratio = img.naturalHeight / img.naturalWidth;
+    const renderedH = state.bgImgWidth * ratio;
+    for (const wrap of wraps) {
+      wrap.style.minWidth = (state.bgImgWidth + 16) + "px";
+      wrap.style.minHeight = (renderedH + 16) + "px";
+    }
+  }
+}
+
+shapeBgImg.addEventListener("load", updateGridWrapSizing);
+plotBgImg.addEventListener("load", updateGridWrapSizing);
 
 // ===================================================================
 // Farm Shape view: render + paint
@@ -254,10 +409,15 @@ function shapeHandleBrush(el) {
 
 async function shapeHandleFill(el) {
   const v = shapePaint === "farm" ? 0 : 255;
-  const data = await postJson("/api/fill", {
-    row: +el.dataset.row, col: +el.dataset.col, value: v,
-  });
-  state.cells = data.cells;
+  const r = +el.dataset.row;
+  const c = +el.dataset.col;
+  const changed = fillRegionLocal(r, c, v);
+  if (changed.length) {
+    for (const [rr, cc] of changed) queueCell(rr, cc, v);
+    flushPending().catch(err => {
+      fileStatus.textContent = `Error syncing paint: ${err.message}`;
+    });
+  }
   renderShapeGrid();
 }
 
@@ -342,10 +502,15 @@ async function plotHandleFill(el) {
   if (current === 255) return;
 
   const v = plotPaint === "plot" ? selectedPlotId : 0;
-  const data = await postJson("/api/fill", {
-    row: +el.dataset.row, col: +el.dataset.col, value: v,
-  });
-  state.cells = data.cells;
+  const r = +el.dataset.row;
+  const c = +el.dataset.col;
+  const changed = fillRegionLocal(r, c, v);
+  if (changed.length) {
+    for (const [rr, cc] of changed) queueCell(rr, cc, v);
+    flushPending().catch(err => {
+      fileStatus.textContent = `Error syncing paint: ${err.message}`;
+    });
+  }
   renderPlotGrid();
   renderPlotList();
 }
@@ -405,7 +570,9 @@ function handlePointerUp() {
   if (isPainting) {
     isPainting = false;
     activeGrid = null;
-    flushPending();
+    flushPending().catch(err => {
+      fileStatus.textContent = `Error syncing paint: ${err.message}`;
+    });
   }
 }
 
@@ -486,6 +653,9 @@ bgFileInput.addEventListener("change", async () => {
   const reader = new FileReader();
   reader.onload = async () => {
     state.bgDataUrl = reader.result;
+    state.bgImgWidth = getGridRenderedWidth();
+    bgWidthInput.value = state.bgImgWidth;
+    bgWidthVal.textContent = state.bgImgWidth + "px";
     bgClearBtn.style.display = "";
     updateBgImages();
 
@@ -510,6 +680,12 @@ bgOpacityInput.addEventListener("input", () => {
   updateBgImages();
 });
 
+bgWidthInput.addEventListener("input", () => {
+  state.bgImgWidth = +bgWidthInput.value;
+  bgWidthVal.textContent = state.bgImgWidth + "px";
+  updateBgImages();
+});
+
 document.addEventListener("paste", (e) => {
   const items = e.clipboardData && e.clipboardData.items;
   if (!items) return;
@@ -520,6 +696,9 @@ document.addEventListener("paste", (e) => {
       const reader = new FileReader();
       reader.onload = async () => {
         state.bgDataUrl = reader.result;
+        state.bgImgWidth = getGridRenderedWidth();
+        bgWidthInput.value = state.bgImgWidth;
+        bgWidthVal.textContent = state.bgImgWidth + "px";
         bgClearBtn.style.display = "";
         updateBgImages();
         const ext = file.type.split("/")[1] || "png";
@@ -771,20 +950,26 @@ dateSlider.addEventListener("input", updateTimelineGrid);
 downloadFarmBtn.addEventListener("click", async () => {
   fileStatus.textContent = "Exporting...";
   try {
+    flushPending().catch(() => {});
     const metadata = {
       cellSize: state.cellSize,
       bgOpacity: state.bgOpacity,
+      bgImgWidth: state.bgImgWidth,
       selectedPlants: selectedPlants,
       planYear: planYearInput.value,
       startMonth: startMonthSel.value,
       selectedPlotId: selectedPlotId,
     };
-    const res = await fetch("/api/export", {
+    const grid = {
+      width: state.width,
+      height: state.height,
+      cells: state.cells,
+    };
+    const blob = await fetchBlobWithTimeout("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ metadata }),
-    });
-    const blob = await res.blob();
+      body: JSON.stringify({ metadata, grid }),
+    }, 30000);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -808,7 +993,7 @@ uploadFarmInput.addEventListener("change", async () => {
   reader.onload = async () => {
     try {
       const b64 = reader.result.split(",")[1];
-      const data = await postJson("/api/import", { data: b64 });
+      const data = await postJson("/api/import", { data: b64 }, { timeoutMs: 30000 });
 
       // Restore grid
       state.width  = data.grid.width;
@@ -826,6 +1011,11 @@ uploadFarmInput.addEventListener("change", async () => {
       if (meta.bgOpacity !== undefined) {
         state.bgOpacity = meta.bgOpacity;
         bgOpacityInput.value = meta.bgOpacity;
+      }
+      if (meta.bgImgWidth) {
+        state.bgImgWidth = meta.bgImgWidth;
+        bgWidthInput.value = meta.bgImgWidth;
+        bgWidthVal.textContent = meta.bgImgWidth + "px";
       }
       if (meta.selectedPlants) {
         selectedPlants = meta.selectedPlants;
@@ -854,6 +1044,9 @@ uploadFarmInput.addEventListener("change", async () => {
       fileStatus.textContent = `Error: ${e.message}`;
     }
   };
+  reader.onerror = () => {
+    fileStatus.textContent = "Error: Failed to read file";
+  };
   reader.readAsDataURL(file);
   uploadFarmInput.value = "";
 });
@@ -870,6 +1063,9 @@ uploadFarmInput.addEventListener("change", async () => {
   const bgData = await (await fetch("/api/background")).json();
   if (bgData.image) {
     state.bgDataUrl = bgData.image;
+    state.bgImgWidth = getGridRenderedWidth();
+    bgWidthInput.value = state.bgImgWidth;
+    bgWidthVal.textContent = state.bgImgWidth + "px";
     bgClearBtn.style.display = "";
   }
 
