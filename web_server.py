@@ -38,13 +38,16 @@ from farm import (
     load_grid_csv,
     save_grid_csv,
     save_plan_json,
+    load_history_json,
 )
 from plantCompatibility import compatible_plants, incompatible_plants
 from plantPlantTime import planting_data
 
 _WEB_DIR = os.path.join(_PROJECT_ROOT, "web")
 _DATA_DIR = os.path.join(_PROJECT_ROOT, "data")
+_FIGMA_DIR = os.path.join(_PROJECT_ROOT, "figmaFiles")
 _DEFAULT_GRID_PATH = os.path.join(_DATA_DIR, "test_farm.csv")
+_HISTORY_PATH = os.path.join(_DATA_DIR, "history.json")
 
 # Shared planner infrastructure (read-only after init)
 COMPAT_INDEX = PlantCompatibilityIndex(compatible_plants, incompatible_plants)
@@ -420,6 +423,22 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({"plants": AVAILABLE_PLANTS})
         if path == "/api/background":
             return self._json({"image": get_background_data_url()})
+        if path == "/api/history":
+            plans = load_history_json(_HISTORY_PATH)
+            return self._json({"plans": plans})
+        # Serve figmaFiles/ as /figmaFiles/
+        if path.startswith("/figmaFiles/"):
+            rel = path[len("/figmaFiles/"):]
+            file_path = os.path.join(_FIGMA_DIR, rel)
+            if os.path.isfile(file_path) and file_path.endswith(".svg"):
+                with open(file_path, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/svg+xml")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
         return super().do_GET()
 
     # ---- POST ----

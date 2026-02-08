@@ -2,37 +2,24 @@
   "year": 2026,
   "mode": "bootstrap",
   "selected_plants": [
-    "Tomatoes",
-    "Corn",
-    "Lettuce",
-    "Radish"
+    "Asparagus",
+    "Broad Beans",
+    "Beet"
   ],
   "timeline": {
     "1": [
       {
-        "plant": "Radish",
-        "start": "2026-02-01",
-        "end": "2026-03-03",
+        "plant": "Beet",
+        "start": "2026-04-01",
+        "end": "2026-05-31",
         "method": "direct_sow"
-      },
-      {
-        "plant": "Tomatoes",
-        "start": "2026-04-15",
-        "end": "2026-07-24",
-        "method": "transplant"
       }
     ],
     "2": [
       {
-        "plant": "Lettuce",
-        "start": "2026-03-15",
-        "end": "2026-05-04",
-        "method": "transplant"
-      },
-      {
-        "plant": "Corn",
-        "start": "2026-05-15",
-        "end": "2026-08-08",
+        "plant": "Broad Beans",
+        "start": "2026-02-01",
+        "end": "2026-04-22",
         "method": "direct_sow"
       }
     ],
@@ -46,73 +33,49 @@
     "10": [],
     "11": [],
     "12": [],
-    "13": [],
-    "14": [],
-    "15": []
+    "13": []
   },
   "assigned": [
     {
-      "plant": "Tomatoes",
+      "plant": "Beet",
       "plot_id": 1,
-      "start": "2026-04-15",
-      "end": "2026-07-24",
-      "method": "transplant"
-    },
-    {
-      "plant": "Corn",
-      "plot_id": 2,
-      "start": "2026-05-15",
-      "end": "2026-08-08",
+      "start": "2026-04-01",
+      "end": "2026-05-31",
       "method": "direct_sow"
     },
     {
-      "plant": "Lettuce",
+      "plant": "Broad Beans",
       "plot_id": 2,
-      "start": "2026-03-15",
-      "end": "2026-05-04",
-      "method": "transplant"
-    },
-    {
-      "plant": "Radish",
-      "plot_id": 1,
       "start": "2026-02-01",
-      "end": "2026-03-03",
+      "end": "2026-04-22",
       "method": "direct_sow"
     }
   ],
-  "unassigned_plants": [],
+  "unassigned_plants": [
+    "Asparagus"
+  ],
   "adjacency_events": [],
   "score": 0,
   "compatibility_matrix": {
     "plants": [
-      "Tomatoes",
-      "Corn",
-      "Lettuce",
-      "Radish"
+      "Asparagus",
+      "Broad Beans",
+      "Beet"
     ],
     "scores": [
       [
-        0,
-        -3,
-        1,
-        1
-      ],
-      [
-        -3,
         0,
         0,
         0
       ],
       [
-        1,
         0,
         0,
-        2
+        0
       ],
       [
-        1,
         0,
-        2,
+        0,
         0
       ]
     ]

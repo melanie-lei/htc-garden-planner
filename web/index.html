@@ -4,177 +4,268 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Farm Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="page">
-      <header>
-        <h1>Farm Planner</h1>
-        <p>Design your garden layout, select plants, and get a time-aware planting schedule.</p>
-      </header>
 
-      <!-- ============ TAB NAVIGATION ============ -->
-      <nav class="tabs">
-        <button class="tab active" data-view="farm-shape">Farm Shape</button>
-        <button class="tab" data-view="plots">Plots</button>
-        <button class="tab" data-view="main">Planner</button>
-      </nav>
-
-      <!-- ============ VIEW: FARM SHAPE ============ -->
-      <div id="view-farm-shape" class="view active">
-        <section class="panel">
-          <h2>Define Farm Area</h2>
-          <div class="controls">
-            <div class="group">
-              <h3>Grid Size</h3>
-              <label>Width <input id="grid-width" type="number" min="1" value="10" /></label>
-              <label>Height <input id="grid-height" type="number" min="1" value="10" /></label>
-              <button id="create-grid">Create Grid</button>
-            </div>
-
-            <div class="group">
-              <h3>Paint</h3>
-              <div class="row">
-                <label class="radio"><input type="radio" name="shape-tool" value="brush" checked /> Brush</label>
-                <label class="radio"><input type="radio" name="shape-tool" value="fill" /> Fill</label>
-              </div>
-              <div class="row">
-                <label class="radio"><input type="radio" name="shape-paint" value="farm" checked /> Farm</label>
-                <label class="radio"><input type="radio" name="shape-paint" value="not-farm" /> Not Farm</label>
-              </div>
-              <label>Cell size <input id="cell-size" type="range" min="16" max="80" value="26" /></label>
-            </div>
-
-            <div class="group">
-              <h3>Background Image</h3>
-              <button id="bg-upload-btn">Upload Image</button>
-              <input id="bg-file-input" type="file" accept="image/*" hidden />
-              <button id="bg-clear-btn" class="sm danger" style="display:none">Remove</button>
-              <div class="hint">Or paste an image (Ctrl+V)</div>
-              <label>Opacity <input id="bg-opacity" type="range" min="0" max="100" value="30" /></label>
-              <label>Image width <input id="bg-width" type="range" min="50" max="2000" value="400" /> <span id="bg-width-val">400px</span></label>
-            </div>
+    <!-- ==================== PAGE 1: START ==================== -->
+    <div id="page-start" class="page active">
+      <div class="start-center">
+        <div class="logo-large" id="logo-start"></div>
+        <h1 class="start-title">Farm Planner</h1>
+        <div class="start-actions">
+          <div class="start-row">
+            <label class="file-input-label" id="new-farm-label">
+              <span class="file-input-text">Choose farm image...</span>
+              <input type="file" id="new-farm-image" accept="image/*" hidden />
+            </label>
+            <button id="new-farm-btn" class="btn btn-primary">
+              <span class="btn-icon" id="icon-create"></span>
+              Create New Farm
+            </button>
           </div>
-
-          <div class="canvas">
-            <div class="legend">
-              <span class="legend-box farm-cell"></span> Farm
-              <span class="legend-box invalid"></span> Not Farm
-            </div>
-            <div class="grid-wrap" id="shape-grid-wrap">
-              <img id="shape-bg-img" class="grid-bg" />
-              <div id="shape-grid" class="grid"></div>
-            </div>
+          <div class="start-row">
+            <label class="file-input-label" id="import-farm-label">
+              <span class="file-input-text">Choose .farm file...</span>
+              <input type="file" id="import-farm-file" accept=".farm" hidden />
+            </label>
+            <button id="import-farm-btn" class="btn btn-outline">
+              <span class="btn-icon" id="icon-import"></span>
+              Import Farm
+            </button>
           </div>
-        </section>
+        </div>
       </div>
+    </div>
 
-      <!-- ============ VIEW: PLOTS ============ -->
-      <div id="view-plots" class="view">
-        <section class="panel">
-          <h2>Assign Plots</h2>
-          <div class="controls">
-            <div class="group">
-              <h3>Plots</h3>
-              <div id="plot-list" class="plot-list"></div>
-              <button id="add-plot-btn">+ New Plot</button>
-              <button id="auto-assign-btn" class="primary">Auto-Assign Unassigned</button>
-            </div>
-
-            <div class="group">
-              <h3>Paint</h3>
-              <div class="row">
-                <label class="radio"><input type="radio" name="plot-tool" value="brush" checked /> Brush</label>
-                <label class="radio"><input type="radio" name="plot-tool" value="fill" /> Fill</label>
-              </div>
-              <div class="row">
-                <label class="radio"><input type="radio" name="plot-paint" value="plot" checked /> Paint Plot</label>
-                <label class="radio"><input type="radio" name="plot-paint" value="unassign" /> Unassign</label>
-              </div>
-              <div class="hint" id="plot-paint-hint">Select a plot from the list, then paint on farm cells.</div>
-            </div>
-          </div>
-
-          <div class="canvas">
-            <div class="legend">
-              <span class="legend-box farm-cell"></span> Unassigned
-              <span class="legend-box invalid"></span> Not Farm
-              <span class="legend-box plot"></span> Plot
-            </div>
-            <div class="grid-wrap" id="plot-grid-wrap">
-              <img id="plot-bg-img" class="grid-bg" />
-              <div id="plot-grid" class="grid"></div>
-            </div>
-          </div>
-        </section>
+    <!-- ==================== PAGE 2: FARM AREA SELECTION ==================== -->
+    <div id="page-farm-area" class="page">
+      <div class="page-top">
+        <div class="logo-small" id="logo-farm-area"></div>
+        <span class="page-top-title">Farm Area Selection</span>
       </div>
-
-      <!-- ============ VIEW: MAIN (Planner) ============ -->
-      <div id="view-main" class="view">
-        <section class="panel">
-          <h2>Planner</h2>
-          <div class="controls">
-            <div class="group" style="flex: 2">
-              <h3>Select Plants (drag to reorder)</h3>
-              <div class="row">
-                <select id="plant-select"><option value="">Loading...</option></select>
-                <button id="add-plant">Add</button>
-              </div>
-              <ol id="plant-list" class="plant-list"></ol>
+      <div class="page-body farm-area-body">
+        <!-- Left: controls sidebar -->
+        <div class="farm-area-sidebar">
+          <div class="control-group">
+            <h3 class="control-label">Grid Size</h3>
+            <div class="row">
+              <label class="inline-label">W <input id="grid-width" type="number" min="1" value="10" class="input-sm" /></label>
+              <label class="inline-label">H <input id="grid-height" type="number" min="1" value="10" class="input-sm" /></label>
+              <button id="create-grid" class="btn btn-sm btn-primary">Create</button>
             </div>
+          </div>
+          <div class="control-group">
+            <h3 class="control-label">Paint Tool</h3>
+            <div class="row">
+              <label class="radio-label"><input type="radio" name="shape-tool" value="brush" checked /> Brush</label>
+              <label class="radio-label"><input type="radio" name="shape-tool" value="fill" /> Fill</label>
+            </div>
+            <div class="row">
+              <label class="radio-label"><input type="radio" name="shape-paint" value="farm" checked /> Farm</label>
+              <label class="radio-label"><input type="radio" name="shape-paint" value="not-farm" /> Not Farm</label>
+            </div>
+          </div>
+          <div class="control-group">
+            <h3 class="control-label">Cell Size</h3>
+            <input id="cell-size" type="range" min="16" max="80" value="30" class="range-input" />
+          </div>
+          <div class="control-group">
+            <h3 class="control-label">Background Image</h3>
+            <button id="bg-upload-btn" class="btn btn-sm btn-outline">Upload Image</button>
+            <input id="bg-file-input" type="file" accept="image/*" hidden />
+            <button id="bg-clear-btn" class="btn btn-sm btn-danger" style="display:none">Remove</button>
+            <div class="hint">Or paste an image (Ctrl+V)</div>
+            <label class="range-label">Opacity <input id="bg-opacity" type="range" min="0" max="100" value="30" class="range-input" /></label>
+            <label class="range-label">Width <input id="bg-width" type="range" min="50" max="2000" value="400" class="range-input" /> <span id="bg-width-val">400px</span></label>
+          </div>
+        </div>
+        <!-- Center: grid -->
+        <div class="grid-stage" id="farm-area-stage">
+          <div class="grid-wrap" id="farm-area-grid-wrap">
+            <img id="farm-area-bg-img" class="grid-bg" />
+            <div id="farm-area-grid" class="grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="page-bottom">
+        <div class="bottom-left">
+          <button id="grid-decrease" class="btn btn-icon-only" title="Decrease grid size">&#x2212;</button>
+          <button id="grid-increase" class="btn btn-icon-only" title="Increase grid size">+</button>
+        </div>
+        <div class="bottom-right">
+          <button id="farm-area-proceed" class="btn btn-primary btn-proceed">
+            Proceed
+            <span class="btn-icon" id="icon-proceed-area"></span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-            <div class="group">
-              <h3>Settings</h3>
-              <label>Year <input id="plan-year" type="number" min="2020" max="2100" value="2026" /></label>
-              <label>
-                Start month
-                <select id="start-month">
-                  <option value="1">January</option><option value="2">February</option>
-                  <option value="3">March</option><option value="4">April</option>
-                  <option value="5">May</option><option value="6">June</option>
-                  <option value="7">July</option><option value="8">August</option>
-                  <option value="9">September</option><option value="10">October</option>
-                  <option value="11">November</option><option value="12">December</option>
+    <!-- ==================== PAGE 3: PLOT DELINEATION ==================== -->
+    <div id="page-plots" class="page">
+      <div class="page-top plots-top">
+        <div class="logo-small" id="logo-plots"></div>
+        <span class="page-top-title">Plot Delineation</span>
+        <button id="back-to-farm-area" class="btn btn-sm btn-outline" style="margin-left:auto">Back to Farm Area</button>
+      </div>
+      <div class="page-body plots-body">
+        <div class="plots-sidebar">
+          <h2 class="sidebar-title">Legend</h2>
+          <div id="plot-legend" class="plot-legend"></div>
+          <div class="plots-buttons">
+            <button id="add-plot-btn" class="btn btn-primary">
+              <span class="btn-icon" id="icon-add-plot"></span>
+              Add New Plot
+            </button>
+            <button id="clear-cell-btn" class="btn btn-outline">Clear Cell</button>
+            <button id="auto-assign-btn" class="btn btn-sm btn-outline">Auto-Assign Unassigned</button>
+          </div>
+          <div class="control-group" style="margin-top:8px">
+            <h3 class="control-label">Paint Tool</h3>
+            <div class="row">
+              <label class="radio-label"><input type="radio" name="plot-tool" value="brush" checked /> Brush</label>
+              <label class="radio-label"><input type="radio" name="plot-tool" value="fill" /> Fill</label>
+            </div>
+          </div>
+          <div id="plot-paint-hint" class="hint">Select a plot, then paint on cells.</div>
+        </div>
+        <div class="grid-stage" id="plots-stage">
+          <div class="grid-wrap" id="plots-grid-wrap">
+            <img id="plots-bg-img" class="grid-bg" />
+            <div id="plots-grid" class="grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="page-bottom">
+        <div class="bottom-left"></div>
+        <div class="bottom-right">
+          <button id="plots-proceed" class="btn btn-primary btn-proceed">
+            Proceed
+            <span class="btn-icon" id="icon-proceed-plots"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PAGE 4: MAIN PAGE ==================== -->
+    <div id="page-main" class="page">
+      <div class="main-layout">
+        <!-- Top left: notes -->
+        <div class="main-notes" id="main-notes">
+          <h3 class="notes-title">Plot Info</h3>
+          <div id="notes-content" class="notes-content">Select a plot to view details.</div>
+        </div>
+        <!-- Top right: suggestions button + edit buttons -->
+        <div class="main-top-right">
+          <button id="edit-farm-btn" class="btn btn-sm btn-outline">Edit Farm</button>
+          <button id="edit-plots-btn" class="btn btn-sm btn-outline">Edit Plots</button>
+          <button id="open-suggestions" class="btn btn-primary">
+            <span class="btn-icon" id="icon-suggestions"></span>
+            Suggestions
+          </button>
+        </div>
+        <!-- Left sidebar: history -->
+        <div class="main-sidebar">
+          <div class="history-panel" id="history-panel">
+            <h3 class="history-title">Planting History</h3>
+            <div id="history-tree" class="history-tree"></div>
+          </div>
+        </div>
+        <!-- Center: farm grid -->
+        <div class="main-grid-area">
+          <div class="grid-stage" id="main-stage">
+            <div class="grid-wrap" id="main-grid-wrap">
+              <div id="main-grid" class="grid"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom left: logo -->
+        <div class="main-bottom-left">
+          <div class="logo-small" id="logo-main"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PAGE 5: SUGGESTIONS ==================== -->
+    <div id="page-suggestions" class="page">
+      <div class="suggestions-layout">
+        <!-- Top: time slider -->
+        <div class="suggestions-top">
+          <div class="time-slider-wrap">
+            <input id="suggestions-slider" type="range" min="0" max="364" value="0" />
+            <span id="suggestions-date" class="slider-date">Jan 01</span>
+          </div>
+          <button id="close-suggestions" class="btn btn-icon-only btn-close" title="Close">&#x2715;</button>
+        </div>
+        <!-- Body -->
+        <div class="suggestions-body">
+          <!-- Left: plant selector -->
+          <div class="suggestions-sidebar">
+            <div class="plant-search-wrap">
+              <span class="search-icon" id="icon-search"></span>
+              <input type="text" id="plant-search" class="plant-search" placeholder="Search plants..." />
+            </div>
+            <select id="plant-select" class="plant-select" size="6"></select>
+            <button id="add-plant-btn" class="btn btn-primary btn-sm">Add Plant</button>
+            <h3 class="sidebar-subtitle">Selected Plants <small>(drag to reorder)</small></h3>
+            <div id="plant-list" class="plant-list"></div>
+            <div class="control-group" style="margin-top:8px">
+              <h3 class="control-label">Settings</h3>
+              <div class="row">
+                <label class="inline-label">Year <input id="plan-year" type="number" min="2020" max="2100" value="2026" class="input-sm" /></label>
+              </div>
+              <label class="inline-label">Start
+                <select id="start-month" class="input-sm">
+                  <option value="1">Jan</option><option value="2">Feb</option>
+                  <option value="3">Mar</option><option value="4">Apr</option>
+                  <option value="5">May</option><option value="6">Jun</option>
+                  <option value="7">Jul</option><option value="8">Aug</option>
+                  <option value="9">Sep</option><option value="10">Oct</option>
+                  <option value="11">Nov</option><option value="12">Dec</option>
                 </select>
               </label>
-              <button id="run-planner" class="primary">Run Planner</button>
-              <div class="hint" id="plan-status"></div>
+            </div>
+            <button id="run-planner-btn" class="btn btn-primary" style="margin-top:auto">
+              Run Planner
+            </button>
+            <div id="plan-status" class="plan-status"></div>
+          </div>
+          <!-- Center: grid + results -->
+          <div class="suggestions-main">
+            <div class="grid-stage" id="suggestions-stage">
+              <div class="grid-wrap" id="suggestions-grid-wrap">
+                <div id="suggestions-grid" class="grid"></div>
+              </div>
+            </div>
+            <!-- Results (shown after planner runs) -->
+            <div id="results-section" class="results-section" style="display:none">
+              <h3 class="results-heading">Plan Results</h3>
+              <div id="plan-summary" class="plan-summary"></div>
+
+              <h3 class="results-heading">Plot Timelines</h3>
+              <div id="plot-timelines" class="plot-timelines"></div>
+
+              <h3 class="results-heading">Adjacency Interactions</h3>
+              <div id="adjacency-events"></div>
+
+              <h3 class="results-heading">Compatibility Matrix</h3>
+              <div id="compat-matrix"></div>
             </div>
           </div>
-        </section>
-
-        <!-- Results (hidden until plan runs) -->
-        <section id="results-section" class="panel" style="display:none">
-          <h2>Plan Results</h2>
-          <div id="plan-summary"></div>
-
-          <h3>Timeline</h3>
-          <div class="slider-row">
-            <input id="date-slider" type="range" min="0" max="364" value="0" />
-            <span id="current-date" class="date-label">Jan 01</span>
-          </div>
-          <div class="grid-wrap" id="timeline-grid-wrap">
-            <div id="timeline-grid" class="grid"></div>
-          </div>
-
-          <h3>Plot Timelines</h3>
-          <div id="plot-timelines"></div>
-
-          <h3>Adjacency Interactions</h3>
-          <div id="adjacency-events"></div>
-
-          <h3>Compatibility Matrix</h3>
-          <div id="compat-matrix"></div>
-        </section>
+        </div>
       </div>
+    </div>
 
-      <!-- ============ FILE CONTROLS (always visible) ============ -->
-      <div class="file-bar">
-        <button id="download-farm">Download .farm</button>
-        <button id="upload-farm-btn">Upload .farm</button>
-        <input id="upload-farm-input" type="file" accept=".farm" hidden />
-        <span id="file-status" class="hint"></span>
-      </div>
+    <!-- ==================== GLOBAL: .farm file bar ==================== -->
+    <div class="file-bar" id="file-bar" style="display:none">
+      <button id="download-farm" class="btn btn-outline btn-sm">Download .farm</button>
+      <button id="upload-farm-btn" class="btn btn-outline btn-sm">Upload .farm</button>
+      <input id="upload-farm-input" type="file" accept=".farm" hidden />
+      <span id="file-status" class="hint"></span>
     </div>
 
     <script src="app.js"></script>
