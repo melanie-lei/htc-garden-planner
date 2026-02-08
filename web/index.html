@@ -13,118 +13,167 @@
         <p>Design your garden layout, select plants, and get a time-aware planting schedule.</p>
       </header>
 
-      <!-- ============ GRID EDITOR ============ -->
-      <section class="panel">
-        <h2 class="section-toggle" data-target="grid-editor">Grid Editor</h2>
-        <div id="grid-editor">
+      <!-- ============ TAB NAVIGATION ============ -->
+      <nav class="tabs">
+        <button class="tab active" data-view="farm-shape">Farm Shape</button>
+        <button class="tab" data-view="plots">Plots</button>
+        <button class="tab" data-view="main">Planner</button>
+      </nav>
+
+      <!-- ============ VIEW: FARM SHAPE ============ -->
+      <div id="view-farm-shape" class="view active">
+        <section class="panel">
+          <h2>Define Farm Area</h2>
           <div class="controls">
             <div class="group">
-              <h3>Grid</h3>
+              <h3>Grid Size</h3>
               <label>Width <input id="grid-width" type="number" min="1" value="10" /></label>
               <label>Height <input id="grid-height" type="number" min="1" value="10" /></label>
-              <label>
-                Fill
-                <select id="grid-fill">
-                  <option value="255">Invalid (255)</option>
-                  <option value="0">Unassigned (0)</option>
-                </select>
-              </label>
               <button id="create-grid">Create Grid</button>
             </div>
 
             <div class="group">
               <h3>Paint</h3>
               <div class="row">
-                <label class="radio"><input type="radio" name="tool" value="brush" checked /> Brush</label>
-                <label class="radio"><input type="radio" name="tool" value="fill" /> Fill</label>
+                <label class="radio"><input type="radio" name="shape-tool" value="brush" checked /> Brush</label>
+                <label class="radio"><input type="radio" name="shape-tool" value="fill" /> Fill</label>
               </div>
               <div class="row">
-                <label class="radio"><input type="radio" name="paint-type" value="plot" checked /> Plot ID</label>
-                <input id="plot-id" type="number" min="1" max="254" value="1" />
+                <label class="radio"><input type="radio" name="shape-paint" value="farm" checked /> Farm</label>
+                <label class="radio"><input type="radio" name="shape-paint" value="not-farm" /> Not Farm</label>
               </div>
-              <div class="row">
-                <label class="radio"><input type="radio" name="paint-type" value="unassigned" /> Unassigned (0)</label>
-              </div>
-              <div class="row">
-                <label class="radio"><input type="radio" name="paint-type" value="invalid" /> Invalid (255)</label>
-              </div>
-              <label>Cell size <input id="cell-size" type="range" min="16" max="40" value="26" /></label>
+              <label>Cell size <input id="cell-size" type="range" min="16" max="80" value="26" /></label>
             </div>
 
             <div class="group">
-              <h3>Storage</h3>
-              <label>CSV file <input id="filename" type="text" value="test_farm.csv" /></label>
-              <button id="save-grid">Save CSV</button>
-              <button id="load-grid">Load CSV</button>
-              <div class="hint" id="save-status"></div>
+              <h3>Background Image</h3>
+              <button id="bg-upload-btn">Upload Image</button>
+              <input id="bg-file-input" type="file" accept="image/*" hidden />
+              <button id="bg-clear-btn" class="sm danger" style="display:none">Remove</button>
+              <div class="hint">Or paste an image (Ctrl+V)</div>
+              <label>Opacity <input id="bg-opacity" type="range" min="0" max="100" value="30" /></label>
             </div>
           </div>
 
           <div class="canvas">
             <div class="legend">
-              <span class="legend-box invalid"></span> Invalid
-              <span class="legend-box unassigned"></span> Unassigned
+              <span class="legend-box farm-cell"></span> Farm
+              <span class="legend-box invalid"></span> Not Farm
+            </div>
+            <div class="grid-wrap" id="shape-grid-wrap">
+              <img id="shape-bg-img" class="grid-bg" />
+              <div id="shape-grid" class="grid"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ VIEW: PLOTS ============ -->
+      <div id="view-plots" class="view">
+        <section class="panel">
+          <h2>Assign Plots</h2>
+          <div class="controls">
+            <div class="group">
+              <h3>Plots</h3>
+              <div id="plot-list" class="plot-list"></div>
+              <button id="add-plot-btn">+ New Plot</button>
+              <button id="auto-assign-btn" class="primary">Auto-Assign Unassigned</button>
+            </div>
+
+            <div class="group">
+              <h3>Paint</h3>
+              <div class="row">
+                <label class="radio"><input type="radio" name="plot-tool" value="brush" checked /> Brush</label>
+                <label class="radio"><input type="radio" name="plot-tool" value="fill" /> Fill</label>
+              </div>
+              <div class="row">
+                <label class="radio"><input type="radio" name="plot-paint" value="plot" checked /> Paint Plot</label>
+                <label class="radio"><input type="radio" name="plot-paint" value="unassign" /> Unassign</label>
+              </div>
+              <div class="hint" id="plot-paint-hint">Select a plot from the list, then paint on farm cells.</div>
+            </div>
+          </div>
+
+          <div class="canvas">
+            <div class="legend">
+              <span class="legend-box farm-cell"></span> Unassigned
+              <span class="legend-box invalid"></span> Not Farm
               <span class="legend-box plot"></span> Plot
             </div>
-            <div id="grid" class="grid"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ PLANNER ============ -->
-      <section class="panel">
-        <h2>Planner</h2>
-        <div class="controls">
-          <div class="group" style="flex: 2">
-            <h3>Select Plants (drag to reorder)</h3>
-            <div class="row">
-              <select id="plant-select"><option value="">Loading...</option></select>
-              <button id="add-plant">Add</button>
+            <div class="grid-wrap" id="plot-grid-wrap">
+              <img id="plot-bg-img" class="grid-bg" />
+              <div id="plot-grid" class="grid"></div>
             </div>
-            <ol id="plant-list" class="plant-list"></ol>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ VIEW: MAIN (Planner) ============ -->
+      <div id="view-main" class="view">
+        <section class="panel">
+          <h2>Planner</h2>
+          <div class="controls">
+            <div class="group" style="flex: 2">
+              <h3>Select Plants (drag to reorder)</h3>
+              <div class="row">
+                <select id="plant-select"><option value="">Loading...</option></select>
+                <button id="add-plant">Add</button>
+              </div>
+              <ol id="plant-list" class="plant-list"></ol>
+            </div>
+
+            <div class="group">
+              <h3>Settings</h3>
+              <label>Year <input id="plan-year" type="number" min="2020" max="2100" value="2026" /></label>
+              <label>
+                Start month
+                <select id="start-month">
+                  <option value="1">January</option><option value="2">February</option>
+                  <option value="3">March</option><option value="4">April</option>
+                  <option value="5">May</option><option value="6">June</option>
+                  <option value="7">July</option><option value="8">August</option>
+                  <option value="9">September</option><option value="10">October</option>
+                  <option value="11">November</option><option value="12">December</option>
+                </select>
+              </label>
+              <button id="run-planner" class="primary">Run Planner</button>
+              <div class="hint" id="plan-status"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Results (hidden until plan runs) -->
+        <section id="results-section" class="panel" style="display:none">
+          <h2>Plan Results</h2>
+          <div id="plan-summary"></div>
+
+          <h3>Timeline</h3>
+          <div class="slider-row">
+            <input id="date-slider" type="range" min="0" max="364" value="0" />
+            <span id="current-date" class="date-label">Jan 01</span>
+          </div>
+          <div class="grid-wrap" id="timeline-grid-wrap">
+            <div id="timeline-grid" class="grid"></div>
           </div>
 
-          <div class="group">
-            <h3>Settings</h3>
-            <label>Year <input id="plan-year" type="number" min="2020" max="2100" value="2026" /></label>
-            <label>
-              Start month
-              <select id="start-month">
-                <option value="1">January</option><option value="2">February</option>
-                <option value="3">March</option><option value="4">April</option>
-                <option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option>
-                <option value="9">September</option><option value="10">October</option>
-                <option value="11">November</option><option value="12">December</option>
-              </select>
-            </label>
-            <button id="run-planner" class="primary">Run Planner</button>
-            <div class="hint" id="plan-status"></div>
-          </div>
-        </div>
-      </section>
+          <h3>Plot Timelines</h3>
+          <div id="plot-timelines"></div>
 
-      <!-- ============ RESULTS ============ -->
-      <section id="results-section" class="panel" style="display:none">
-        <h2>Plan Results</h2>
-        <div id="plan-summary"></div>
+          <h3>Adjacency Interactions</h3>
+          <div id="adjacency-events"></div>
 
-        <h3>Timeline Scrubber</h3>
-        <div class="slider-row">
-          <input id="date-slider" type="range" min="0" max="364" value="0" />
-          <span id="current-date" class="date-label">Jan 01</span>
-        </div>
-        <div id="timeline-grid" class="grid"></div>
+          <h3>Compatibility Matrix</h3>
+          <div id="compat-matrix"></div>
+        </section>
+      </div>
 
-        <h3>Plot Timelines</h3>
-        <div id="plot-timelines"></div>
-
-        <h3>Adjacency Interactions</h3>
-        <div id="adjacency-events"></div>
-
-        <h3>Compatibility Matrix</h3>
-        <div id="compat-matrix"></div>
-      </section>
+      <!-- ============ FILE CONTROLS (always visible) ============ -->
+      <div class="file-bar">
+        <button id="download-farm">Download .farm</button>
+        <button id="upload-farm-btn">Upload .farm</button>
+        <input id="upload-farm-input" type="file" accept=".farm" hidden />
+        <span id="file-status" class="hint"></span>
+      </div>
     </div>
 
     <script src="app.js"></script>

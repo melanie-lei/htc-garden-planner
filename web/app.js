@@ -1,18 +1,32 @@
 // ===================================================================
 // DOM refs
 // ===================================================================
-const gridEl          = document.getElementById("grid");
+
+// Tabs
+const tabs = document.querySelectorAll(".tab");
+const views = document.querySelectorAll(".view");
+
+// Farm Shape view
 const widthInput      = document.getElementById("grid-width");
 const heightInput     = document.getElementById("grid-height");
-const fillSelect      = document.getElementById("grid-fill");
 const createBtn       = document.getElementById("create-grid");
-const plotIdInput     = document.getElementById("plot-id");
 const cellSizeInput   = document.getElementById("cell-size");
-const filenameInput   = document.getElementById("filename");
-const saveBtn         = document.getElementById("save-grid");
-const loadBtn         = document.getElementById("load-grid");
-const saveStatus      = document.getElementById("save-status");
+const shapeGridEl     = document.getElementById("shape-grid");
+const shapeBgImg      = document.getElementById("shape-bg-img");
+const bgUploadBtn     = document.getElementById("bg-upload-btn");
+const bgFileInput     = document.getElementById("bg-file-input");
+const bgClearBtn      = document.getElementById("bg-clear-btn");
+const bgOpacityInput  = document.getElementById("bg-opacity");
 
+// Plot Assignment view
+const plotListEl      = document.getElementById("plot-list");
+const addPlotBtn      = document.getElementById("add-plot-btn");
+const autoAssignBtn   = document.getElementById("auto-assign-btn");
+const plotGridEl      = document.getElementById("plot-grid");
+const plotBgImg       = document.getElementById("plot-bg-img");
+const plotPaintHint   = document.getElementById("plot-paint-hint");
+
+// Main / Planner view
 const plantSelect     = document.getElementById("plant-select");
 const addPlantBtn     = document.getElementById("add-plant");
 const plantListEl     = document.getElementById("plant-list");
@@ -21,6 +35,7 @@ const startMonthSel   = document.getElementById("start-month");
 const runPlannerBtn   = document.getElementById("run-planner");
 const planStatus      = document.getElementById("plan-status");
 
+// Results
 const resultsSection  = document.getElementById("results-section");
 const planSummary     = document.getElementById("plan-summary");
 const dateSlider      = document.getElementById("date-slider");
@@ -30,24 +45,42 @@ const plotTimelinesEl = document.getElementById("plot-timelines");
 const adjEventsEl     = document.getElementById("adjacency-events");
 const compatMatrixEl  = document.getElementById("compat-matrix");
 
+// File controls
+const downloadFarmBtn = document.getElementById("download-farm");
+const uploadFarmBtn   = document.getElementById("upload-farm-btn");
+const uploadFarmInput = document.getElementById("upload-farm-input");
+const fileStatus      = document.getElementById("file-status");
+
 // ===================================================================
 // State
 // ===================================================================
+
 let state = {
-  width: 0, height: 0, cells: [],
-  tool: "brush", paintType: "plot",
-  cellSize: Number(cellSizeInput.value),
+  width: 0,
+  height: 0,
+  cells: [],
+  cellSize: 26,
+  bgOpacity: 30,
+  bgDataUrl: null,
 };
 
-let selectedPlants = [];   // ranked list of plant names
-let currentPlan = null;    // last plan result from server
-let isPainting = false;
-let pending = new Map();
-let flushTimer = null;
+let shapeTool  = "brush";
+let shapePaint = "farm";     // "farm" | "not-farm"
+let plotTool   = "brush";
+let plotPaint  = "plot";     // "plot" | "unassign"
+
+let selectedPlotId = 1;
+let selectedPlants = [];
+let currentPlan    = null;
+let isPainting     = false;
+let activeGrid     = null;   // "shape" | "plot"
+let pending        = new Map();
+let flushTimer     = null;
 
 // ===================================================================
 // Helpers
 // ===================================================================
+
 async function postJson(url, payload) {
   const res = await fetch(url, {
     method: "POST",
@@ -59,16 +92,8 @@ async function postJson(url, payload) {
   return data;
 }
 
-function getPaintValue() {
-  if (state.paintType === "unassigned") return 0;
-  if (state.paintType === "invalid") return 255;
-  let id = Math.max(1, Math.min(254, Math.round(Number(plotIdInput.value) || 1)));
-  plotIdInput.value = id;
-  return id;
-}
-
 function plotColor(id) {
-  return `hsl(${(id * 47) % 360}, 65%, 80%)`;
+  return `hsl(${(id * 47) % 360}, 65%, 75%)`;
 }
 
 function plantColor(name) {
@@ -93,35 +118,46 @@ function isoDate(d) {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-// ===================================================================
-// Grid editor  (kept from original)
-// ===================================================================
-function applyCellStyle(el, value) {
-  el.classList.remove("invalid", "unassigned", "plot");
-  if (value === 255) {
-    el.classList.add("invalid"); el.textContent = ""; el.style.backgroundColor = "";
-  } else if (value === 0) {
-    el.classList.add("unassigned"); el.textContent = ""; el.style.backgroundColor = "";
-  } else {
-    el.classList.add("plot"); el.textContent = value; el.style.backgroundColor = plotColor(value);
-  }
-}
-
-function renderGrid() {
-  gridEl.style.setProperty("--cell-size", `${state.cellSize}px`);
-  gridEl.style.gridTemplateColumns = `repeat(${state.width}, var(--cell-size))`;
-  gridEl.innerHTML = "";
+function getPlotInfo() {
+  const plots = {};
   for (let r = 0; r < state.height; r++) {
     for (let c = 0; c < state.width; c++) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.dataset.row = r;
-      cell.dataset.col = c;
-      applyCellStyle(cell, state.cells[r][c]);
-      gridEl.appendChild(cell);
+      const v = state.cells[r][c];
+      if (v >= 1 && v <= 254) {
+        plots[v] = (plots[v] || 0) + 1;
+      }
     }
   }
+  return plots;
 }
+
+function getNextPlotId() {
+  const plots = getPlotInfo();
+  for (let id = 1; id <= 254; id++) {
+    if (!plots[id]) return id;
+  }
+  return null;
+}
+
+// ===================================================================
+// Tab switching
+// ===================================================================
+
+function switchView(viewName) {
+  tabs.forEach(t => t.classList.toggle("active", t.dataset.view === viewName));
+  views.forEach(v => v.classList.toggle("active", v.id === `view-${viewName}`));
+
+  if (viewName === "farm-shape") renderShapeGrid();
+  if (viewName === "plots") { renderPlotGrid(); renderPlotList(); }
+}
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => switchView(tab.dataset.view));
+});
+
+// ===================================================================
+// Server communication
+// ===================================================================
 
 async function fetchGrid() {
   const data = await (await fetch("/api/grid")).json();
@@ -130,7 +166,6 @@ async function fetchGrid() {
   state.cells = data.cells;
   widthInput.value = data.width;
   heightInput.value = data.height;
-  renderGrid();
 }
 
 function queueCell(row, col, value) {
@@ -139,89 +174,370 @@ function queueCell(row, col, value) {
 }
 
 async function flushPending() {
-  clearTimeout(flushTimer); flushTimer = null;
+  clearTimeout(flushTimer);
+  flushTimer = null;
   if (pending.size === 0) return;
   const cells = [...pending.values()];
   pending.clear();
   await postJson("/api/paint", { cells });
 }
 
-function handleBrush(el) {
-  const r = +el.dataset.row, c = +el.dataset.col, v = getPaintValue();
-  if (state.cells[r][c] === v) return;
+// ===================================================================
+// Grid rendering helpers
+// ===================================================================
+
+function setGridLayout(gridEl) {
+  const cs = state.cellSize;
+  gridEl.style.setProperty("--cell-size", `${cs}px`);
+  gridEl.style.gridTemplateColumns = `repeat(${state.width}, var(--cell-size))`;
+}
+
+function updateBgImages() {
+  const opacity = state.bgOpacity / 100;
+  for (const img of [shapeBgImg, plotBgImg]) {
+    if (state.bgDataUrl) {
+      img.src = state.bgDataUrl;
+      img.style.display = "block";
+      img.style.opacity = opacity;
+    } else {
+      img.style.display = "none";
+    }
+  }
+}
+
+// ===================================================================
+// Farm Shape view: render + paint
+// ===================================================================
+
+function renderShapeGrid() {
+  setGridLayout(shapeGridEl);
+  shapeGridEl.innerHTML = "";
+
+  for (let r = 0; r < state.height; r++) {
+    for (let c = 0; c < state.width; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.dataset.grid = "shape";
+
+      const v = state.cells[r][c];
+      if (v === 255) {
+        cell.classList.add("invalid");
+      } else {
+        cell.classList.add("farm-cell");
+      }
+      shapeGridEl.appendChild(cell);
+    }
+  }
+  updateBgImages();
+}
+
+function shapeHandleBrush(el) {
+  const r = +el.dataset.row, c = +el.dataset.col;
+  const current = state.cells[r][c];
+
+  if (shapePaint === "farm") {
+    if (current === 255) {
+      state.cells[r][c] = 0;
+      applyCellShape(el, 0);
+      queueCell(r, c, 0);
+    }
+  } else {
+    if (current !== 255) {
+      state.cells[r][c] = 255;
+      applyCellShape(el, 255);
+      queueCell(r, c, 255);
+    }
+  }
+}
+
+async function shapeHandleFill(el) {
+  const v = shapePaint === "farm" ? 0 : 255;
+  const data = await postJson("/api/fill", {
+    row: +el.dataset.row, col: +el.dataset.col, value: v,
+  });
+  state.cells = data.cells;
+  renderShapeGrid();
+}
+
+function applyCellShape(el, v) {
+  el.classList.remove("invalid", "farm-cell");
+  el.classList.add(v === 255 ? "invalid" : "farm-cell");
+}
+
+// ===================================================================
+// Plot Assignment view: render + paint
+// ===================================================================
+
+function renderPlotGrid() {
+  setGridLayout(plotGridEl);
+  plotGridEl.innerHTML = "";
+
+  for (let r = 0; r < state.height; r++) {
+    for (let c = 0; c < state.width; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.dataset.grid = "plot";
+
+      const v = state.cells[r][c];
+      if (v === 255) {
+        cell.classList.add("invalid");
+      } else if (v === 0) {
+        cell.classList.add("unassigned");
+      } else {
+        cell.classList.add("plot");
+        cell.textContent = v;
+        cell.style.backgroundColor = plotColor(v);
+        if (v === selectedPlotId) cell.classList.add("plot-selected");
+      }
+      plotGridEl.appendChild(cell);
+    }
+  }
+  updateBgImages();
+}
+
+function renderPlotList() {
+  const plots = getPlotInfo();
+  const ids = Object.keys(plots).map(Number).sort((a, b) => a - b);
+
+  plotListEl.innerHTML = "";
+  for (const id of ids) {
+    const item = document.createElement("div");
+    item.className = "plot-item" + (id === selectedPlotId ? " selected" : "");
+    item.innerHTML =
+      `<span class="plot-swatch" style="background:${plotColor(id)}"></span>` +
+      `Plot ${id} <small>(${plots[id]} cells)</small>`;
+    item.addEventListener("click", () => {
+      selectedPlotId = id;
+      renderPlotList();
+      renderPlotGrid();
+    });
+    plotListEl.appendChild(item);
+  }
+
+  if (ids.length === 0) {
+    plotListEl.innerHTML =
+      '<div class="hint">No plots yet. Click "+ New Plot" to start.</div>';
+  }
+}
+
+function plotHandleBrush(el) {
+  const r = +el.dataset.row, c = +el.dataset.col;
+  const current = state.cells[r][c];
+  if (current === 255) return; // can't paint on non-farm cells
+
+  const v = plotPaint === "plot" ? selectedPlotId : 0;
+  if (current === v) return;
+
   state.cells[r][c] = v;
-  applyCellStyle(el, v);
+  applyCellPlot(el, v);
   queueCell(r, c, v);
 }
 
-async function handleFill(el) {
+async function plotHandleFill(el) {
+  const current = state.cells[+el.dataset.row][+el.dataset.col];
+  if (current === 255) return;
+
+  const v = plotPaint === "plot" ? selectedPlotId : 0;
   const data = await postJson("/api/fill", {
-    row: +el.dataset.row, col: +el.dataset.col, value: getPaintValue()
+    row: +el.dataset.row, col: +el.dataset.col, value: v,
   });
-  state.width = data.width; state.height = data.height; state.cells = data.cells;
-  renderGrid();
+  state.cells = data.cells;
+  renderPlotGrid();
+  renderPlotList();
 }
+
+function applyCellPlot(el, v) {
+  el.classList.remove("invalid", "unassigned", "plot", "plot-selected");
+  el.style.backgroundColor = "";
+  el.textContent = "";
+
+  if (v === 255) {
+    el.classList.add("invalid");
+  } else if (v === 0) {
+    el.classList.add("unassigned");
+  } else {
+    el.classList.add("plot");
+    el.textContent = v;
+    el.style.backgroundColor = plotColor(v);
+    if (v === selectedPlotId) el.classList.add("plot-selected");
+  }
+}
+
+// ===================================================================
+// Unified pointer events for painting
+// ===================================================================
 
 function cellFromEvent(e) {
   return e.target.classList.contains("cell") ? e.target : null;
 }
 
-// Grid editor event listeners
+function handlePointerDown(e) {
+  const cell = cellFromEvent(e);
+  if (!cell) return;
+  const g = cell.dataset.grid;
+
+  if (g === "shape") {
+    if (shapeTool === "fill") { shapeHandleFill(cell); return; }
+    isPainting = true;
+    activeGrid = "shape";
+    shapeHandleBrush(cell);
+  } else if (g === "plot") {
+    if (plotTool === "fill") { plotHandleFill(cell); return; }
+    isPainting = true;
+    activeGrid = "plot";
+    plotHandleBrush(cell);
+  }
+}
+
+function handlePointerOver(e) {
+  if (!isPainting) return;
+  const cell = cellFromEvent(e);
+  if (!cell) return;
+  if (activeGrid === "shape" && cell.dataset.grid === "shape") shapeHandleBrush(cell);
+  if (activeGrid === "plot"  && cell.dataset.grid === "plot")  plotHandleBrush(cell);
+}
+
+function handlePointerUp() {
+  if (isPainting) {
+    isPainting = false;
+    activeGrid = null;
+    flushPending();
+  }
+}
+
+shapeGridEl.addEventListener("pointerdown", handlePointerDown);
+shapeGridEl.addEventListener("pointerover", handlePointerOver);
+plotGridEl.addEventListener("pointerdown", handlePointerDown);
+plotGridEl.addEventListener("pointerover", handlePointerOver);
+window.addEventListener("pointerup", handlePointerUp);
+
+// ===================================================================
+// Farm Shape controls
+// ===================================================================
+
 createBtn.addEventListener("click", async () => {
   const data = await postJson("/api/grid", {
-    width: +widthInput.value || 1, height: +heightInput.value || 1,
-    fill: +fillSelect.value
+    width: +widthInput.value || 1,
+    height: +heightInput.value || 1,
+    fill: 255, // all invalid; user paints farm area
   });
-  state.width = data.width; state.height = data.height; state.cells = data.cells;
-  renderGrid();
+  state.width = data.width;
+  state.height = data.height;
+  state.cells = data.cells;
+  renderShapeGrid();
 });
 
 cellSizeInput.addEventListener("input", () => {
   state.cellSize = +cellSizeInput.value;
-  renderGrid();
+  const active = document.querySelector(".view.active");
+  if (active.id === "view-farm-shape") renderShapeGrid();
+  else if (active.id === "view-plots")  renderPlotGrid();
 });
 
-saveBtn.addEventListener("click", async () => {
-  saveStatus.textContent = "";
-  try {
-    const data = await postJson("/api/save", { filename: filenameInput.value });
-    saveStatus.textContent = `Saved to ${data.saved_to}`;
-  } catch (e) { saveStatus.textContent = e.message; }
+for (const inp of document.querySelectorAll("input[name='shape-tool']"))
+  inp.addEventListener("change", () => { shapeTool = inp.value; });
+for (const inp of document.querySelectorAll("input[name='shape-paint']"))
+  inp.addEventListener("change", () => { shapePaint = inp.value; });
+
+// ===================================================================
+// Plot Assignment controls
+// ===================================================================
+
+for (const inp of document.querySelectorAll("input[name='plot-tool']"))
+  inp.addEventListener("change", () => { plotTool = inp.value; });
+for (const inp of document.querySelectorAll("input[name='plot-paint']"))
+  inp.addEventListener("change", () => { plotPaint = inp.value; });
+
+addPlotBtn.addEventListener("click", () => {
+  const nextId = getNextPlotId();
+  if (nextId === null) {
+    plotPaintHint.textContent = "Maximum 254 plots reached!";
+    return;
+  }
+  selectedPlotId = nextId;
+  plotPaintHint.textContent = `Plot ${nextId} created. Paint on farm cells to assign.`;
+  renderPlotList();
+  renderPlotGrid();
 });
 
-loadBtn.addEventListener("click", async () => {
-  saveStatus.textContent = "";
-  try {
-    const data = await postJson("/api/load", { filename: filenameInput.value });
-    state.width = data.width; state.height = data.height; state.cells = data.cells;
-    widthInput.value = data.width; heightInput.value = data.height;
-    renderGrid();
-  } catch (e) { saveStatus.textContent = e.message; }
+autoAssignBtn.addEventListener("click", async () => {
+  const data = await postJson("/api/auto-assign", {});
+  state.width = data.width;
+  state.height = data.height;
+  state.cells = data.cells;
+  renderPlotGrid();
+  renderPlotList();
 });
 
-for (const inp of document.querySelectorAll("input[name='tool']"))
-  inp.addEventListener("change", () => { state.tool = inp.value; });
-for (const inp of document.querySelectorAll("input[name='paint-type']"))
-  inp.addEventListener("change", () => { state.paintType = inp.value; });
+// ===================================================================
+// Background Image
+// ===================================================================
 
-gridEl.addEventListener("pointerdown", async (e) => {
-  const cell = cellFromEvent(e);
-  if (!cell) return;
-  if (state.tool === "fill") { await handleFill(cell); return; }
-  isPainting = true; handleBrush(cell);
+bgUploadBtn.addEventListener("click", () => bgFileInput.click());
+
+bgFileInput.addEventListener("change", async () => {
+  const file = bgFileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    state.bgDataUrl = reader.result;
+    bgClearBtn.style.display = "";
+    updateBgImages();
+
+    const ext = file.name.split(".").pop() || "png";
+    await postJson("/api/background", {
+      image: reader.result,
+      filename: `background.${ext}`,
+    });
+  };
+  reader.readAsDataURL(file);
 });
-gridEl.addEventListener("pointerover", (e) => {
-  if (!isPainting || state.tool !== "brush") return;
-  const cell = cellFromEvent(e);
-  if (cell) handleBrush(cell);
+
+bgClearBtn.addEventListener("click", async () => {
+  state.bgDataUrl = null;
+  bgClearBtn.style.display = "none";
+  updateBgImages();
+  await postJson("/api/background", { image: null });
 });
-window.addEventListener("pointerup", () => {
-  if (isPainting) { isPainting = false; flushPending(); }
+
+bgOpacityInput.addEventListener("input", () => {
+  state.bgOpacity = +bgOpacityInput.value;
+  updateBgImages();
+});
+
+document.addEventListener("paste", (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = async () => {
+        state.bgDataUrl = reader.result;
+        bgClearBtn.style.display = "";
+        updateBgImages();
+        const ext = file.type.split("/")[1] || "png";
+        await postJson("/api/background", {
+          image: reader.result,
+          filename: `background.${ext}`,
+        });
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
 });
 
 // ===================================================================
 // Plant selection
 // ===================================================================
+
 async function fetchPlants() {
   const data = await (await fetch("/api/plants")).json();
   plantSelect.innerHTML = "";
@@ -248,13 +564,19 @@ function renderPlantList() {
     const upBtn = document.createElement("button");
     upBtn.textContent = "\u25B2"; upBtn.className = "sm";
     upBtn.disabled = i === 0;
-    upBtn.onclick = () => { [selectedPlants[i - 1], selectedPlants[i]] = [selectedPlants[i], selectedPlants[i - 1]]; renderPlantList(); };
+    upBtn.onclick = () => {
+      [selectedPlants[i - 1], selectedPlants[i]] = [selectedPlants[i], selectedPlants[i - 1]];
+      renderPlantList();
+    };
     li.appendChild(upBtn);
 
     const downBtn = document.createElement("button");
     downBtn.textContent = "\u25BC"; downBtn.className = "sm";
     downBtn.disabled = i === selectedPlants.length - 1;
-    downBtn.onclick = () => { [selectedPlants[i], selectedPlants[i + 1]] = [selectedPlants[i + 1], selectedPlants[i]]; renderPlantList(); };
+    downBtn.onclick = () => {
+      [selectedPlants[i], selectedPlants[i + 1]] = [selectedPlants[i + 1], selectedPlants[i]];
+      renderPlantList();
+    };
     li.appendChild(downBtn);
 
     const rmBtn = document.createElement("button");
@@ -262,17 +584,19 @@ function renderPlantList() {
     rmBtn.onclick = () => { selectedPlants.splice(i, 1); renderPlantList(); };
     li.appendChild(rmBtn);
 
-    // Drag-and-drop reordering
-    li.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", String(i)); });
-    li.addEventListener("dragover", (e) => { e.preventDefault(); li.classList.add("drag-over"); });
+    li.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", String(i));
+    });
+    li.addEventListener("dragover", (e) => {
+      e.preventDefault(); li.classList.add("drag-over");
+    });
     li.addEventListener("dragleave", () => { li.classList.remove("drag-over"); });
     li.addEventListener("drop", (e) => {
       e.preventDefault(); li.classList.remove("drag-over");
       const from = +e.dataTransfer.getData("text/plain");
-      const to = i;
-      if (from === to) return;
+      if (from === i) return;
       const [item] = selectedPlants.splice(from, 1);
-      selectedPlants.splice(to, 0, item);
+      selectedPlants.splice(i, 0, item);
       renderPlantList();
     });
 
@@ -290,6 +614,7 @@ addPlantBtn.addEventListener("click", () => {
 // ===================================================================
 // Planner
 // ===================================================================
+
 runPlannerBtn.addEventListener("click", async () => {
   if (selectedPlants.length === 0) {
     planStatus.textContent = "Select at least one plant first.";
@@ -315,10 +640,10 @@ runPlannerBtn.addEventListener("click", async () => {
 // ===================================================================
 // Results display
 // ===================================================================
+
 function showResults(plan) {
   resultsSection.style.display = "";
 
-  // Summary
   let html = `<p><strong>Score:</strong> ${plan.score} &nbsp; `;
   html += `<strong>Assigned:</strong> ${plan.assigned.length}/${plan.selected_plants.length}`;
   if (plan.unassigned_plants.length) {
@@ -327,11 +652,10 @@ function showResults(plan) {
   html += `</p>`;
   planSummary.innerHTML = html;
 
-  // Plot timelines
   let tlHtml = "";
   for (const [plotId, entries] of Object.entries(plan.timeline).sort()) {
     tlHtml += `<div class="tl-plot"><strong>Plot ${plotId}</strong>`;
-    if (entries.length === 0) { tlHtml += " (empty)"; }
+    if (entries.length === 0) tlHtml += " (empty)";
     tlHtml += "<ul>";
     for (const e of entries) {
       const method = e.method.replace(/_/g, " ");
@@ -341,7 +665,6 @@ function showResults(plan) {
   }
   plotTimelinesEl.innerHTML = tlHtml;
 
-  // Adjacency events
   let adjHtml = "";
   if (plan.adjacency_events.length === 0) {
     adjHtml = "<p>No adjacency interactions.</p>";
@@ -357,7 +680,6 @@ function showResults(plan) {
   }
   adjEventsEl.innerHTML = adjHtml;
 
-  // Compatibility matrix
   const cm = plan.compatibility_matrix;
   if (cm && cm.plants.length > 0) {
     let tbl = '<table class="matrix"><tr><th></th>';
@@ -378,7 +700,6 @@ function showResults(plan) {
     compatMatrixEl.innerHTML = tbl;
   }
 
-  // Render initial timeline grid at Jan 1
   dateSlider.value = 0;
   updateTimelineGrid();
 }
@@ -386,6 +707,7 @@ function showResults(plan) {
 // ===================================================================
 // Timeline scrubber
 // ===================================================================
+
 function getSnapshot(timeline, dateStr) {
   const snap = {};
   for (const [plotId, entries] of Object.entries(timeline)) {
@@ -408,10 +730,7 @@ function updateTimelineGrid() {
   const dateStr = isoDate(d);
   const snap = getSnapshot(currentPlan.timeline, dateStr);
 
-  // Build cell -> plotId map from current grid state
-  const cs = state.cellSize;
-  timelineGridEl.style.setProperty("--cell-size", `${cs}px`);
-  timelineGridEl.style.gridTemplateColumns = `repeat(${state.width}, var(--cell-size))`;
+  setGridLayout(timelineGridEl);
   timelineGridEl.innerHTML = "";
 
   for (let r = 0; r < state.height; r++) {
@@ -446,23 +765,115 @@ function updateTimelineGrid() {
 dateSlider.addEventListener("input", updateTimelineGrid);
 
 // ===================================================================
-// Section toggle  (collapse grid editor)
+// .farm file handling
 // ===================================================================
-for (const toggle of document.querySelectorAll(".section-toggle")) {
-  toggle.style.cursor = "pointer";
-  toggle.addEventListener("click", () => {
-    const target = document.getElementById(toggle.dataset.target);
-    if (target) target.style.display = target.style.display === "none" ? "" : "none";
-  });
-}
+
+downloadFarmBtn.addEventListener("click", async () => {
+  fileStatus.textContent = "Exporting...";
+  try {
+    const metadata = {
+      cellSize: state.cellSize,
+      bgOpacity: state.bgOpacity,
+      selectedPlants: selectedPlants,
+      planYear: planYearInput.value,
+      startMonth: startMonthSel.value,
+      selectedPlotId: selectedPlotId,
+    };
+    const res = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metadata }),
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "farm.farm";
+    a.click();
+    URL.revokeObjectURL(url);
+    fileStatus.textContent = "Downloaded!";
+  } catch (e) {
+    fileStatus.textContent = `Error: ${e.message}`;
+  }
+});
+
+uploadFarmBtn.addEventListener("click", () => uploadFarmInput.click());
+
+uploadFarmInput.addEventListener("change", async () => {
+  const file = uploadFarmInput.files[0];
+  if (!file) return;
+  fileStatus.textContent = "Importing...";
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const b64 = reader.result.split(",")[1];
+      const data = await postJson("/api/import", { data: b64 });
+
+      // Restore grid
+      state.width  = data.grid.width;
+      state.height = data.grid.height;
+      state.cells  = data.grid.cells;
+      widthInput.value  = data.grid.width;
+      heightInput.value = data.grid.height;
+
+      // Restore metadata
+      const meta = data.metadata || {};
+      if (meta.cellSize) {
+        state.cellSize = meta.cellSize;
+        cellSizeInput.value = meta.cellSize;
+      }
+      if (meta.bgOpacity !== undefined) {
+        state.bgOpacity = meta.bgOpacity;
+        bgOpacityInput.value = meta.bgOpacity;
+      }
+      if (meta.selectedPlants) {
+        selectedPlants = meta.selectedPlants;
+        renderPlantList();
+      }
+      if (meta.planYear)       planYearInput.value = meta.planYear;
+      if (meta.startMonth)     startMonthSel.value = meta.startMonth;
+      if (meta.selectedPlotId) selectedPlotId = meta.selectedPlotId;
+
+      // Restore background
+      if (data.background) {
+        state.bgDataUrl = data.background;
+        bgClearBtn.style.display = "";
+      } else {
+        state.bgDataUrl = null;
+        bgClearBtn.style.display = "none";
+      }
+
+      // Re-render all views
+      renderShapeGrid();
+      renderPlotGrid();
+      renderPlotList();
+
+      fileStatus.textContent = "Imported successfully!";
+    } catch (e) {
+      fileStatus.textContent = `Error: ${e.message}`;
+    }
+  };
+  reader.readAsDataURL(file);
+  uploadFarmInput.value = "";
+});
 
 // ===================================================================
 // Init
 // ===================================================================
+
 (async () => {
   await fetchGrid();
   await fetchPlants();
-  // Pre-populate a sample selection for quick testing
+
+  // Check for existing background on server
+  const bgData = await (await fetch("/api/background")).json();
+  if (bgData.image) {
+    state.bgDataUrl = bgData.image;
+    bgClearBtn.style.display = "";
+  }
+
+  // Pre-populate default plants for quick testing
   const defaults = ["Tomatoes", "Corn", "Onions", "Cucumbers", "Lettuce", "Radish"];
   for (const p of defaults) {
     if ([...plantSelect.options].some(o => o.value === p)) {
@@ -470,4 +881,7 @@ for (const toggle of document.querySelectorAll(".section-toggle")) {
     }
   }
   renderPlantList();
+
+  // Render the initial view (Farm Shape)
+  renderShapeGrid();
 })();
