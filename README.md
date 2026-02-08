@@ -1,2 +1,2 @@
-# rotr-garden-sim
-Roots On The Roof Garden Simulator by Lossy Compression
+# htc-garden-planner
+Garden Planner by Lossy Compression for Hack The Coast
