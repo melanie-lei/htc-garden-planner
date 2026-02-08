@@ -15,6 +15,7 @@ spelling differences between the two data files (e.g. "Tomato" vs
 "Tomatoes") are handled transparently.
 """
 
+from collections import Counter
 from itertools import combinations, permutations
 from math import comb, factorial
 
@@ -140,6 +141,9 @@ class FarmPlanner:
         self.grid = farm_grid
         self.compat = compat
         self.planting_data = planting_data
+        self._planting_name_map = {
+            normalize_plant_name(name): name for name in planting_data
+        }
 
     # ----- scoring -----
 
@@ -182,9 +186,6 @@ class FarmPlanner:
             dict with keys ``assignment``, ``score``, ``unassigned``,
             ``details``.
         """
-        # Deduplicate while preserving order
-        selected_plants = list(dict.fromkeys(selected_plants))
-
         plot_ids = self.grid.get_plot_ids()
         n_plots = len(plot_ids)
         n_plants = len(selected_plants)
@@ -213,7 +214,10 @@ class FarmPlanner:
                         best_assignment = assignment
                         best_plant_combo = plant_combo
 
-        unassigned = [p for p in selected_plants if p not in best_plant_combo]
+        if best_assignment is None or best_plant_combo is None:
+            return self._empty_result(selected_plants)
+
+        unassigned = self._multiset_difference(selected_plants, list(best_plant_combo))
         details = self._adjacency_details(best_assignment)
 
         return {
@@ -290,7 +294,9 @@ class FarmPlanner:
                 "recommended": None,
             }
 
-            for w in get_all_planting_windows(plant, self.planting_data, year):
+            plant_key = self._resolve_planting_key(plant)
+
+            for w in get_all_planting_windows(plant_key, self.planting_data, year):
                 entry["windows"].append(
                     {
                         "method": w["method"],
@@ -299,13 +305,15 @@ class FarmPlanner:
                     }
                 )
 
-            best = get_best_planting_method(plant, self.planting_data, year)
+            best = get_best_planting_method(plant_key, self.planting_data, year)
             if best:
                 entry["recommended"] = {
                     "method": best["method"],
                     "start": best["start"].isoformat(),
                     "end": best["end"].isoformat(),
                 }
+            elif plant_key not in self.planting_data:
+                entry["notes"] = "No planting-window data found."
 
             schedule.append(entry)
 
@@ -367,6 +375,22 @@ class FarmPlanner:
                 details.append((plot_id, adj_id, plant, adj_plant, s))
 
         return details
+
+    def _resolve_planting_key(self, plant: str) -> str:
+        if plant in self.planting_data:
+            return plant
+        return self._planting_name_map.get(normalize_plant_name(plant), plant)
+
+    @staticmethod
+    def _multiset_difference(items: list[str], used: list[str]) -> list[str]:
+        remaining = Counter(items)
+        remaining.subtract(used)
+        leftover = []
+        for item in items:
+            if remaining[item] > 0:
+                leftover.append(item)
+                remaining[item] -= 1
+        return leftover
 
     @staticmethod
     def _empty_result(selected_plants):
