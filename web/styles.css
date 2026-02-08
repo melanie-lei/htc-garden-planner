@@ -18,6 +18,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 header h1 {
@@ -30,6 +32,8 @@ header p {
   color: #4f4a3f;
 }
 
+/* ---- Panels ---- */
+
 .panel {
   background: #fff8ea;
   border: 1px solid #e1d7c3;
@@ -37,6 +41,30 @@ header p {
   padding: 20px;
   box-shadow: 0 12px 24px rgba(76, 63, 39, 0.1);
 }
+
+h2 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #3d2f12;
+}
+
+h3 {
+  margin: 16px 0 8px 0;
+  font-size: 14px;
+  color: #6a5b3d;
+}
+
+.section-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-toggle::after {
+  content: " \25BE";
+  font-size: 12px;
+}
+
+/* ---- Controls ---- */
 
 .controls {
   display: grid;
@@ -54,9 +82,9 @@ header p {
   gap: 10px;
 }
 
-.group h2 {
-  margin: 0;
-  font-size: 16px;
+.group h3 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #6a5b3d;
@@ -86,10 +114,44 @@ button {
   background: #f2e2bf;
   font-family: inherit;
   cursor: pointer;
+  font-size: 12px;
 }
 
 button:hover {
   background: #efd7a7;
+}
+
+button.primary {
+  background: #6a9f5b;
+  color: #fff;
+  border-color: #5a8a4d;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #5d8e50;
+}
+
+button.primary:disabled {
+  background: #a8c89e;
+  cursor: default;
+}
+
+button.sm {
+  padding: 2px 7px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+button.danger {
+  background: #f5d0c0;
+  border-color: #dca08a;
+  color: #8b3a20;
+}
+
+button.danger:hover {
+  background: #f0bfa8;
 }
 
 .row {
@@ -110,6 +172,8 @@ button:hover {
   font-size: 12px;
   color: #7b6a4a;
 }
+
+/* ---- Grid canvas ---- */
 
 .canvas {
   background: #fff;
@@ -156,6 +220,7 @@ button:hover {
   border-radius: 12px;
   overflow: auto;
   max-width: 100%;
+  width: fit-content;
 }
 
 .cell {
@@ -181,6 +246,191 @@ button:hover {
   background: #fffaf0;
 }
 
+.cell.planted {
+  font-size: 9px;
+  font-weight: 700;
+  color: #2a1f05;
+}
+
+.cell.plot-empty {
+  color: #aaa;
+  font-size: 10px;
+}
+
+/* ---- Plant list ---- */
+
+.plant-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  counter-reset: plant;
+}
+
+.plant-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #fffdf7;
+  border: 1px solid #e4dcc9;
+  border-radius: 8px;
+  cursor: grab;
+  font-size: 13px;
+}
+
+.plant-list li.drag-over {
+  border-color: #6a9f5b;
+  background: #edf7ea;
+}
+
+.plant-name {
+  flex: 1;
+  padding-left: 8px;
+}
+
+.plant-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2a1f05;
+}
+
+/* ---- Timeline scrubber ---- */
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+}
+
+.date-label {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 80px;
+  text-align: center;
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid #e0d2b4;
+}
+
+/* ---- Plot timelines ---- */
+
+.tl-plot {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e4dcc9;
+}
+
+.tl-plot ul {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tl-plot li {
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.tl-plot em {
+  color: #7b6a4a;
+  font-size: 11px;
+}
+
+/* ---- Adjacency events ---- */
+
+#adjacency-events ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#adjacency-events li {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid #e4dcc9;
+}
+
+#adjacency-events li.compat {
+  background: #e8f5e4;
+  border-color: #b4d9a8;
+}
+
+#adjacency-events li.incompat {
+  background: #fde8e4;
+  border-color: #e8b4a8;
+}
+
+#adjacency-events li.neutral {
+  background: #f5f1e8;
+}
+
+/* ---- Compatibility matrix ---- */
+
+.matrix {
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.matrix th,
+.matrix td {
+  padding: 6px 8px;
+  text-align: center;
+  border: 1px solid #e0d2b4;
+  min-width: 50px;
+}
+
+.matrix th {
+  background: #f5f1e8;
+  font-weight: 600;
+  color: #3d2f12;
+}
+
+.matrix td.self {
+  background: #eee;
+  color: #aaa;
+}
+
+.matrix td.compat {
+  background: #ddf3d5;
+  color: #2e6a1e;
+  font-weight: 600;
+}
+
+.matrix td.incompat {
+  background: #fcddd7;
+  color: #8b3a20;
+  font-weight: 600;
+}
+
+.matrix td.neutral {
+  background: #fff;
+  color: #888;
+}
+
+/* ---- Responsive ---- */
+
 @media (max-width: 760px) {
   .page {
     padding: 16px;
@@ -189,5 +439,15 @@ button:hover {
   .panel,
   .canvas {
     padding: 16px;
+  }
+
+  .matrix {
+    font-size: 11px;
+  }
+
+  .matrix th,
+  .matrix td {
+    padding: 4px 5px;
+    min-width: 40px;
   }
 }
