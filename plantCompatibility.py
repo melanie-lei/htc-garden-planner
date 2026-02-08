@@ -1,0 +1,135 @@
+# Mappings for plant family expansion
+plant_families = {
+    "Brassicas": ["Broccoli", "Brussels Sprouts", "Cabbage", "Cauliflower", "Kale", "Turnips", "Kohlrabi", "Mustards"],
+    "Solanums": ["Eggplants", "Peppers", "Potatoes", "Tomatoes"],
+    "Alliums": ["Chives", "Garlic", "Leeks", "Onions"],
+    "Legumes": ["Beans", "Peas", "Soy", "Lupins", "Clover", "Sweet Peas"],
+    "Cucurbits": ["Cucumbers", "Melons", "Squash"],
+    "Chenopodiums": ["Beets", "Chard", "Spinach", "Quinoa", "Amaranth"]
+}
+
+def expand_list(plant_list):
+    expanded = []
+    for plant in plant_list:
+        # Check if the plant is a family key
+        if plant in plant_families:
+            expanded.extend(plant_families[plant])
+        else:
+            expanded.append(plant)
+    # Remove duplicates and sort for cleanliness
+    return sorted(list(set(expanded)))
+
+# Raw data extracted from images, then processed via the expand_list function
+# Note: "Bulb Forming Plants" and "Leafy Green" are kept as text as they were not defined in the expansion list.
+
+compatible_plants = {
+    "Agastache": expand_list(["Brassicas"]),
+    "Amaranth": expand_list(["Corn"]),
+    "Asparagus": expand_list(["Aster", "Basil", "Cilantro", "Dill", "Marigold", "Nasturtiums", "Oregano", "Parsley", "Sage", "Solanums", "Thyme"]),
+    "Basil": expand_list(["Asparagus", "Oregano", "Pepper", "Tomato"]),
+    "Broad Beans": expand_list(["Leafy Green"]),
+    "Beans": expand_list(["Brassicas", "Carrot", "Celery", "Chard", "Corn", "Peas", "Radish", "Strawberry", "Solanums"]),
+    "Soya Beans": expand_list(["Corn"]),
+    "Beet": expand_list(["Alliums", "Brassicas", "Bush Beans", "Corn", "Lettuce", "Mint"]),
+    "Borage": expand_list(["Cucurbits", "Solanums", "Strawberry"]),
+    "Brassicas": expand_list(["Chamomile", "Dill", "Mint", "Rosemary", "Sage"]),
+    "Calendula": expand_list(["Asparagus", "Tomato"]),
+    "Carrots": expand_list(["Alliums", "Brassicas", "Legumes", "Lettuce", "Pepper", "Pole Beans", "Radish", "Rosemary", "Sage", "Tomato"]),
+    "Catnip": expand_list(["Asparagus", "Potato", "Squash"]),
+    "Celery": expand_list(["Alliums", "Beans", "Brassicas", "Cucumber", "Lettuce", "Tomato"]),
+    "Chamomile": expand_list(["Onion"]),
+    "Chervil": expand_list(["Brassicas", "Lettuce", "Radish"]),
+    "Chives": expand_list(["Brassicas", "Carrots", "Tomato"]),
+    "Cilantro": expand_list(["Potato"]),
+    "Clover": expand_list(["Cabbage", "Leafy Greens"]),
+    "Collards": expand_list(["Solanums"]),
+    "Corn": expand_list(["Beet", "Cucurbits", "Dill", "Legumes", "Parsley", "Potato", "Sunflower"]),
+    "Cucumber": expand_list(["Asparagus", "Brassicas", "Celery", "Corn", "Dill", "Legumes", "Lettuce", "Nasturtiums", "Onion", "Radish", "Tomato"]),
+    "Dill": expand_list(["Brassicas", "Corn", "Cucumber", "Lettuce", "Onion"]),
+    "Eggplant": expand_list(["Amaranth", "Legumes", "Marigold", "Pepper", "Spinach", "Thyme"]),
+    "Fennel": expand_list([]),
+    "Garlic": expand_list(["Brassicas", "Celery", "Lettuce", "Potato", "Strawberry", "Tomato"]),
+    "Kohlrabi": expand_list(["Beet", "Brassicas", "Cucumber", "Onion"]),
+    "Leeks": expand_list(["Beet", "Carrot", "Celery", "Onion", "Spinach"]),
+    "Lettuce": expand_list(["Beet", "Brassicas", "Carrot", "Celery", "Chervil", "Dill", "Garlic", "Onion", "Radish", "Spinach", "Strawberry"]),
+    "Lovage": expand_list(["Lettuce", "Spinach"]),
+    "Melons": expand_list(["Corn", "Marigold", "Nasturtiums", "Pumpkin", "Radish", "Squash", "Sunflower"]),
+    "Mint": expand_list([]),
+    "Nasturtiums": expand_list(["Brassicas", "Cucurbits", "Radish", "Tomato"]),
+    "Oats": expand_list(["Clover", "Vetch"]),
+    "Onions": expand_list(["Beet", "Brassicas", "Carrot", "Chamomile", "Dill", "Leek", "Lettuce", "Strawberry", "Summer Savory", "Tomato"]),
+    "Oregano & Marjoram": expand_list(["Asparagus", "Basil", "Brassicas", "Marjoram"]),
+    "Parsley": expand_list(["Asparagus", "Carrot", "Chives", "Corn", "Onion", "Roses", "Tomato"]),
+    "Peas": expand_list(["Beans", "Carrot", "Celery", "Corn", "Cucumber", "Parsley", "Radish", "Solanums", "Spinach", "Strawberry", "Turnip"]),
+    "Pepper": expand_list(["Asparagus", "Basil", "Carrot", "Cucurbits", "Eggplant", "Endive", "Oregano", "Parsley", "Rosemary", "Swiss Chard", "Tomato"]),
+    "Phacelia": expand_list(["Cucurbits"]),
+    "Potatoes": expand_list(["Alliums", "Celery", "Corn", "Marigold", "Legumes"]),
+    "Radish": expand_list(["Alliums", "Celeriac", "Chenopodiums", "Chervil", "Cucurbits", "Lettuce", "Mint", "Parsnip", "Tomato"]),
+    "Rosemary": expand_list(["Beans", "Brassicas", "Carrot"]),
+    "Sage": expand_list(["Cabbage", "Carrot"]),
+    "Spinach": expand_list(["Brassicas", "Eggplant", "Leek", "Lettuce", "Peas", "Radish", "Strawberry"]),
+    "Squash": expand_list(["Corn", "Lettuce", "Melon", "Peas", "Radish"]),
+    "Strawberries": expand_list(["Beans", "Borage", "Garlic", "Lettuce", "Onion", "Peas", "Spinach", "Thyme"]),
+    "Summer Savory": expand_list(["Beans", "Cabbage", "Onion"]),
+    "Sunflowers": expand_list(["Corn", "Squash"]),
+    "Swiss Chard": expand_list(["Beans", "Brassicas", "Onion"]),
+    "Thyme": expand_list(["Brassicas", "Strawberry"]),
+    "Tomatoes": expand_list(["Alliums", "Asparagus", "Basil", "Beans", "Borage", "Carrot", "Collards", "Cucumber", "Lettuce", "Marigold", "Mint", "Nasturtiums", "Parsley", "Pepper"]),
+    "Turnip": expand_list(["Alliums", "Brassicas", "Mint", "Peas", "Squash"])
+}
+
+incompatible_plants = {
+    "Agastache": expand_list(["Radish"]),
+    "Amaranth": expand_list([]),
+    "Asparagus": expand_list([]),
+    "Basil": expand_list([]),
+    "Broad Beans": expand_list(["Bulb Forming Plants"]),
+    "Beans": expand_list(["Bulb Forming Plants"]),
+    "Soya Beans": expand_list([]),
+    "Beet": expand_list(["Bulb Forming Plants", "Pole Beans"]),
+    "Borage": expand_list([]),
+    "Brassicas": expand_list(["Solanums"]),
+    "Calendula": expand_list([]),
+    "Carrots": expand_list(["Dill", "Parsnips", "Potato"]),
+    "Catnip": expand_list([]),
+    "Celery": expand_list([]),
+    "Chamomile": expand_list([]),
+    "Chervil": expand_list([]),
+    "Chives": expand_list(["Legumes"]),
+    "Cilantro": expand_list([]),
+    "Clover": expand_list([]),
+    "Collards": expand_list([]),
+    "Corn": expand_list(["Celery", "Tomato"]),
+    "Cucumber": expand_list(["Potato", "Sage"]),
+    "Dill": expand_list(["Carrot", "Tomato"]),
+    "Eggplant": expand_list(["Fennel"]),
+    "Fennel": expand_list(["Any Food Plant"]),
+    "Garlic": expand_list(["Legumes"]),
+    "Kohlrabi": expand_list(["Pole Beans", "Solanums", "Strawberry"]),
+    "Leeks": expand_list(["Legumes"]),
+    "Lettuce": expand_list([]),
+    "Lovage": expand_list([]),
+    "Melons": expand_list(["Potato"]),
+    "Mint": expand_list(["Parsley"]),
+    "Nasturtiums": expand_list([]),
+    "Oats": expand_list([]),
+    "Onions": expand_list(["Asparagus", "Peas"]),
+    "Oregano & Marjoram": expand_list([]),
+    "Parsley": expand_list([]),
+    "Peas": expand_list(["Onion"]),
+    "Pepper": expand_list(["Beans", "Brassicas", "Fennel"]),
+    "Phacelia": expand_list([]),
+    "Potatoes": expand_list(["Asparagus", "Brassicas", "Carrot", "Cucurbits", "Parsnip", "Rutabaga"]),
+    "Radish": expand_list(["Agastache", "Potato"]),
+    "Rosemary": expand_list([]),
+    "Sage": expand_list(["Cucumber"]),
+    "Spinach": expand_list(["Potato"]),
+    "Squash": expand_list(["Brassicas"]),
+    "Strawberries": expand_list(["Brassicas", "Fennel"]),
+    "Summer Savory": expand_list([]),
+    "Sunflowers": expand_list([]),
+    "Swiss Chard": expand_list([]),
+    "Thyme": expand_list([]),
+    "Tomatoes": expand_list(["Brassicas", "Dill"]),
+    "Turnip": expand_list([])
+}
