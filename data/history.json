@@ -7,76 +7,95 @@
         "Tomatoes",
         "Corn",
         "Onions",
-        "Cucumbers"
+        "Cucumbers",
+        "Lettuce",
+        "Radish"
       ],
-      "assignment": {
-        "1": "Tomatoes",
-        "2": "Onions"
+      "timeline": {
+        "1": [
+          {
+            "plant": "Radish",
+            "start": "2026-02-01",
+            "end": "2026-03-03",
+            "method": "direct_sow"
+          },
+          {
+            "plant": "Tomatoes",
+            "start": "2026-04-15",
+            "end": "2026-07-24",
+            "method": "transplant"
+          }
+        ],
+        "2": [
+          {
+            "plant": "Lettuce",
+            "start": "2026-03-15",
+            "end": "2026-05-04",
+            "method": "transplant"
+          },
+          {
+            "plant": "Corn",
+            "start": "2026-05-15",
+            "end": "2026-08-08",
+            "method": "direct_sow"
+          }
+        ]
       },
-      "score": 2,
+      "assigned": [
+        {
+          "plant": "Tomatoes",
+          "plot_id": 1,
+          "start": "2026-04-15",
+          "end": "2026-07-24",
+          "method": "transplant"
+        },
+        {
+          "plant": "Corn",
+          "plot_id": 2,
+          "start": "2026-05-15",
+          "end": "2026-08-08",
+          "method": "direct_sow"
+        },
+        {
+          "plant": "Lettuce",
+          "plot_id": 2,
+          "start": "2026-03-15",
+          "end": "2026-05-04",
+          "method": "transplant"
+        },
+        {
+          "plant": "Radish",
+          "plot_id": 1,
+          "start": "2026-02-01",
+          "end": "2026-03-03",
+          "method": "direct_sow"
+        }
+      ],
       "unassigned_plants": [
-        "Corn",
+        "Onions",
         "Cucumbers"
       ],
-      "adjacency_details": [
+      "adjacency_events": [
         {
           "plot_a": 1,
           "plot_b": 2,
           "plant_a": "Tomatoes",
-          "plant_b": "Onions",
-          "compatibility_score": 2
-        }
-      ],
-      "schedule": [
-        {
-          "plot_id": 1,
-          "plant": "Tomatoes",
-          "cell_count": 6,
-          "status": "planned",
-          "notes": "",
-          "windows": [
-            {
-              "method": "start",
-              "start": "2026-03-01",
-              "end": "2026-04-15"
-            },
-            {
-              "method": "transplant",
-              "start": "2026-04-15",
-              "end": "2026-06-15"
-            }
-          ],
-          "recommended": {
-            "method": "transplant",
-            "start": "2026-04-15",
-            "end": "2026-06-15"
-          }
+          "plant_b": "Lettuce",
+          "overlap_start": "2026-04-15",
+          "overlap_end": "2026-05-04",
+          "compatibility": 1
         },
         {
-          "plot_id": 2,
-          "plant": "Onions",
-          "cell_count": 6,
-          "status": "planned",
-          "notes": "",
-          "windows": [
-            {
-              "method": "start",
-              "start": "2026-01-01",
-              "end": "2026-04-15"
-            },
-            {
-              "method": "direct_sow",
-              "start": "2026-03-15",
-              "end": "2026-05-15"
-            }
-          ],
-          "recommended": {
-            "method": "direct_sow",
-            "start": "2026-03-15",
-            "end": "2026-05-15"
-          }
+          "plot_a": 1,
+          "plot_b": 2,
+          "plant_a": "Tomatoes",
+          "plant_b": "Corn",
+          "overlap_start": "2026-05-15",
+          "overlap_end": "2026-07-24",
+          "compatibility": -3
         }
-      ]
+      ],
+      "score": -2
     }
   ]
 }
