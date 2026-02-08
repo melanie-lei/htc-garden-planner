@@ -1,0 +1,78 @@
+{
+  "year": 2026,
+  "mode": "bootstrap",
+  "selected_plants": [
+    "Tomatoes",
+    "Corn",
+    "Onions",
+    "Cucumbers"
+  ],
+  "assignment": {
+    "1": "Tomatoes",
+    "2": "Onions"
+  },
+  "score": 2,
+  "unassigned_plants": [
+    "Corn",
+    "Cucumbers"
+  ],
+  "adjacency_details": [
+    {
+      "plot_a": 1,
+      "plot_b": 2,
+      "plant_a": "Tomatoes",
+      "plant_b": "Onions",
+      "compatibility_score": 2
+    }
+  ],
+  "schedule": [
+    {
+      "plot_id": 1,
+      "plant": "Tomatoes",
+      "cell_count": 6,
+      "status": "planned",
+      "notes": "",
+      "windows": [
+        {
+          "method": "start",
+          "start": "2026-03-01",
+          "end": "2026-04-15"
+        },
+        {
+          "method": "transplant",
+          "start": "2026-04-15",
+          "end": "2026-06-15"
+        }
+      ],
+      "recommended": {
+        "method": "transplant",
+        "start": "2026-04-15",
+        "end": "2026-06-15"
+      }
+    },
+    {
+      "plot_id": 2,
+      "plant": "Onions",
+      "cell_count": 6,
+      "status": "planned",
+      "notes": "",
+      "windows": [
+        {
+          "method": "start",
+          "start": "2026-01-01",
+          "end": "2026-04-15"
+        },
+        {
+          "method": "direct_sow",
+          "start": "2026-03-15",
+          "end": "2026-05-15"
+        }
+      ],
+      "recommended": {
+        "method": "direct_sow",
+        "start": "2026-03-15",
+        "end": "2026-05-15"
+      }
+    }
+  ]
+}
