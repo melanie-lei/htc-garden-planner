@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Farm Grid Painter</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <h1>Farm Grid Painter</h1>
+        <p>Paint plots, mark invalid cells, and save/load CSV layouts.</p>
+      </header>
+
+      <section class="panel">
+        <div class="controls">
+          <div class="group">
+            <h2>Grid</h2>
+            <label>
+              Width
+              <input id="grid-width" type="number" min="1" value="10" />
+            </label>
+            <label>
+              Height
+              <input id="grid-height" type="number" min="1" value="10" />
+            </label>
+            <label>
+              New grid fill
+              <select id="grid-fill">
+                <option value="255">Invalid (255)</option>
+                <option value="0">Unassigned (0)</option>
+              </select>
+            </label>
+            <button id="create-grid">Create Grid</button>
+            <button id="fill-invalid">Fill All Invalid</button>
+            <button id="fill-unassigned">Fill All Unassigned</button>
+          </div>
+
+          <div class="group">
+            <h2>Paint</h2>
+            <div class="row">
+              <label class="radio">
+                <input type="radio" name="tool" value="brush" checked />
+                Brush
+              </label>
+              <label class="radio">
+                <input type="radio" name="tool" value="fill" />
+                Fill
+              </label>
+            </div>
+            <div class="row">
+              <label class="radio">
+                <input type="radio" name="paint-type" value="plot" checked />
+                Plot ID
+              </label>
+              <input id="plot-id" type="number" min="1" max="254" value="1" />
+            </div>
+            <div class="row">
+              <label class="radio">
+                <input type="radio" name="paint-type" value="unassigned" />
+                Unassigned (0)
+              </label>
+            </div>
+            <div class="row">
+              <label class="radio">
+                <input type="radio" name="paint-type" value="invalid" />
+                Invalid (255)
+              </label>
+            </div>
+            <label>
+              Cell size
+              <input id="cell-size" type="range" min="16" max="40" value="26" />
+            </label>
+          </div>
+
+          <div class="group">
+            <h2>Storage</h2>
+            <label>
+              CSV filename
+              <input id="filename" type="text" value="test_farm.csv" />
+            </label>
+            <button id="save-grid">Save CSV</button>
+            <button id="load-grid">Load CSV</button>
+            <div class="hint" id="save-status"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="canvas">
+        <div class="legend">
+          <span class="legend-box invalid"></span> Invalid (255)
+          <span class="legend-box unassigned"></span> Unassigned (0)
+          <span class="legend-box plot"></span> Plot ID (1-254)
+        </div>
+        <div id="grid" class="grid"></div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,22 +1,22 @@
 """Farm planting tool — demonstration and entry point.
 
-Loads the test farm grid, runs the planner in bootstrap mode with a
-sample set of user-selected plants, and displays + saves the result.
+Loads the farm grid from CSV, runs the time-aware planner in bootstrap
+mode, and displays the resulting timeline with monthly snapshots.
 """
 
 import os
 import sys
+from datetime import date
 
-# Ensure project root is on the path so ``farm`` and the data modules
-# can be imported regardless of the working directory.
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _PROJECT_ROOT)
 
 from farm import (
     FarmGrid,
     FarmPlanner,
+    FarmTimeline,
     PlantCompatibilityIndex,
-    save_grid_csv,
+    growth_durations,
     load_grid_csv,
     save_plan_json,
     save_history_json,
@@ -26,82 +26,74 @@ from plantPlantTime import planting_data
 
 
 # -------------------------------------------------------------------
-# Helpers
+# Display helpers
 # -------------------------------------------------------------------
 
-def create_test_grid() -> FarmGrid:
-    """Build the 5x5 test grid with a 4x3 planting area in the
-    bottom-right corner, split into two 2x3 plots.
+def display_timeline(plan: dict):
+    """Pretty-print the timeline plan."""
+    print(f"\n{'=' * 60}")
+    print(f"  Farm Planting Plan — {plan['year']}  (mode: {plan['mode']})")
+    print(f"{'=' * 60}")
 
-    Layout (. = invalid / 255)::
-
-        .  .  .  .  .
-        .  .  .  .  .
-        .  1  1  2  2
-        .  1  1  2  2
-        .  1  1  2  2
-
-    Plot 1: columns 1-2, rows 2-4  (6 cells)
-    Plot 2: columns 3-4, rows 2-4  (6 cells)
-    """
-    grid = FarmGrid(width=5, height=5)
-    for row in range(2, 5):
-        for col in range(1, 3):
-            grid.set_cell(row, col, 1)
-        for col in range(3, 5):
-            grid.set_cell(row, col, 2)
-    return grid
-
-
-def display_plan(plan: dict):
-    """Pretty-print a planting plan to stdout."""
-    print(f"\n{'=' * 55}")
-    print(f"  Farm Planting Plan — {plan['year']}")
-    print(f"  Mode: {plan['mode']}")
-    print(f"{'=' * 55}")
-
-    print(f"\nSelected plants: {', '.join(plan['selected_plants'])}")
+    print(f"\nSelected plants (ranked): {', '.join(plan['selected_plants'])}")
     print(f"Compatibility score: {plan['score']}")
 
     if plan["unassigned_plants"]:
-        print(
-            f"\nCould not assign (not enough plots): "
-            f"{', '.join(plan['unassigned_plants'])}"
-        )
+        print(f"Could not fit: {', '.join(plan['unassigned_plants'])}")
 
-    print("\n--- Plot Assignments ---")
-    for entry in plan["schedule"]:
-        print(f"\n  Plot {entry['plot_id']}  ({entry['cell_count']} cells)")
-        print(f"    Plant : {entry['plant']}")
-        print(f"    Status: {entry['status']}")
+    # Per-plot timelines
+    print("\n--- Plot Timelines ---")
+    for plot_str, entries in sorted(plan["timeline"].items()):
+        if not entries:
+            print(f"\n  Plot {plot_str}: (empty)")
+            continue
+        print(f"\n  Plot {plot_str}:")
+        for e in entries:
+            method = e["method"].replace("_", " ").title()
+            print(f"    {e['start']}  to  {e['end']}  |  {e['plant']:16s}  ({method})")
 
-        if entry["recommended"]:
-            rec = entry["recommended"]
-            method = rec["method"].replace("_", " ").title()
-            print(f"    Best method : {method}")
-            print(f"    Best window : {rec['start']}  to  {rec['end']}")
-
-        if entry["windows"]:
-            print("    All options :")
-            for w in entry["windows"]:
-                m = w["method"].replace("_", " ").title()
-                print(f"      {m:14s}  {w['start']}  to  {w['end']}")
-
-    if plan["adjacency_details"]:
-        print("\n--- Adjacency Compatibility ---")
-        for d in plan["adjacency_details"]:
-            s = d["compatibility_score"]
+    # Adjacency events
+    if plan["adjacency_events"]:
+        print("\n--- Adjacency Interactions ---")
+        for ev in plan["adjacency_events"]:
+            s = ev["compatibility"]
             tag = "COMPATIBLE" if s > 0 else ("INCOMPATIBLE" if s < 0 else "NEUTRAL")
             print(
-                f"  Plot {d['plot_a']} ({d['plant_a']})  <->  "
-                f"Plot {d['plot_b']} ({d['plant_b']}):  {tag} ({s:+d})"
+                f"  Plot {ev['plot_a']} ({ev['plant_a']}) <-> "
+                f"Plot {ev['plot_b']} ({ev['plant_b']}):  "
+                f"{tag} ({s:+d})  during {ev['overlap_start']} to {ev['overlap_end']}"
             )
+    print()
 
+
+def display_snapshots(timeline: FarmTimeline, grid: FarmGrid, year: int):
+    """Show what the farm looks like at the 1st of each month."""
+    print("--- Monthly Snapshots ---")
+    print("(what is growing in each plot on the 1st of each month)\n")
+
+    plot_ids = grid.get_plot_ids()
+    col_w = 14
+
+    # Header
+    header = "Date".ljust(12) + "".join(
+        f"Plot {pid}".ljust(col_w) for pid in plot_ids
+    )
+    print(header)
+    print("-" * len(header))
+
+    for month in range(1, 13):
+        d = date(year, month, 1)
+        snap = timeline.snapshot(d)
+        row = d.strftime("%b %d").ljust(12)
+        for pid in plot_ids:
+            plant = snap.get(pid)
+            row += (plant or "--").ljust(col_w)
+        print(row)
     print()
 
 
 def display_compat_matrix(plants: list[str], compat: PlantCompatibilityIndex):
-    """Print a quick compatibility cross-reference for *plants*."""
+    """Print a compatibility cross-reference for selected plants."""
     col_w = 13
     header = "".ljust(col_w) + "".join(p[:11].ljust(col_w) for p in plants)
     print(header)
@@ -122,19 +114,15 @@ def display_compat_matrix(plants: list[str], compat: PlantCompatibilityIndex):
 
 def main():
     data_dir = os.path.join(_PROJECT_ROOT, "data")
-    os.makedirs(data_dir, exist_ok=True)
-
     grid_path = os.path.join(data_dir, "test_farm.csv")
     plan_path = os.path.join(data_dir, "plan_2026.json")
     history_path = os.path.join(data_dir, "history.json")
 
-    # ---- 1. Create / load the test grid ----
-    print("Creating test farm grid (5x5, 4x3 planting area)...")
-    grid = create_test_grid()
-    save_grid_csv(grid, grid_path)
-    print(f"Saved to {grid_path}\n")
+    # ---- 1. Load the farm grid ----
+    print(f"Loading farm grid from {grid_path}...")
+    grid = load_grid_csv(grid_path)
 
-    print("Farm layout:")
+    print(f"\nFarm layout ({grid.width}x{grid.height}):")
     print(grid.display())
 
     plot_ids = grid.get_plot_ids()
@@ -145,34 +133,30 @@ def main():
         adj = adjacency[pid]
         print(f"  Plot {pid}: {len(cells)} cells, adjacent to {adj or 'nothing'}")
 
-    # Verify UNASSIGNED=0 is fully consumed
-    assert not grid.has_unassigned(), "Grid still contains unassigned (0) cells!"
-
-    # ---- 2. Verify round-trip persistence ----
-    print("\nVerifying CSV round-trip...")
-    reloaded = load_grid_csv(grid_path)
-    assert reloaded.cells == grid.cells, "Round-trip mismatch!"
-    print("OK — grid reloads identically.\n")
-
-    # ---- 3. Set up the planner ----
+    # ---- 2. Set up the planner ----
     compat_index = PlantCompatibilityIndex(compatible_plants, incompatible_plants)
-    planner = FarmPlanner(grid, compat_index, planting_data)
+    planner = FarmPlanner(grid, compat_index, planting_data, growth_durations)
 
-    # ---- 4. Run bootstrap planning ----
-    selected = ["Tomatoes", "Corn", "Onions", "Cucumbers"]
-    print(f"User-selected plants: {selected}")
-    print("Running planner (bootstrap mode)...\n")
+    # ---- 3. Run bootstrap planning ----
+    selected = ["Tomatoes", "Corn", "Onions", "Cucumbers", "Lettuce", "Radish"]
+    year = 2026
+    print(f"\nUser-selected plants (ranked): {selected}")
+    print("Running time-aware planner (bootstrap mode)...")
 
-    plan = planner.create_plan(selected, year=2026)
+    plan = planner.plan_year(selected, year)
 
-    # ---- 5. Display the plan ----
-    display_plan(plan)
+    # ---- 4. Display results ----
+    display_timeline(plan)
 
-    # ---- 6. Compatibility matrix for reference ----
+    # Monthly snapshot view (the "scrub through the year" data)
+    timeline = planner.get_timeline(selected, year)
+    display_snapshots(timeline, grid, year)
+
+    # Compatibility matrix
     print("--- Compatibility Matrix ---")
     display_compat_matrix(selected, compat_index)
 
-    # ---- 7. Persist ----
+    # ---- 5. Persist ----
     save_plan_json(plan, plan_path)
     print(f"\nPlan saved to {plan_path}")
 
