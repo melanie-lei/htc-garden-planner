@@ -1,29 +1,29 @@
-"""Farm planting planner.
+"""Farm planting planner — time-aware scheduling with succession planting.
 
-Assigns plants to plots and builds a planting schedule.  Two modes:
+Given a ranked list of plants the user wants to grow, the planner:
 
-1. **Bootstrap** — no prior history.  The user picks which plants they
-   want to grow; the planner finds the assignment of plants to plots
-   that maximises compatibility between adjacent plots and returns a
-   calendar schedule based on the planting-window data.
-
-2. **Historical** (future) — considers up to 4 prior years of data for
-   crop-rotation and soil-health planning.
+1.  Assigns each plant to a (plot, time-window) slot so that every
+    selected plant gets grown if physically possible.
+2.  Respects planting-window data (transplant / direct-sow only —
+    greenhouse starts are ignored since they don't occupy plot space).
+3.  Allows succession planting: short-season crops free their plot
+    for a follow-up crop later in the year.
+4.  Scores adjacent-plot compatibility using the companion / antagonist
+    data, only penalising or rewarding plants that are *simultaneously*
+    in the ground.
+5.  Uses a most-constrained-first strategy so that plants with the
+    fewest placement options get assigned first (maximising coverage).
+    User priority (list order) breaks ties.
 
 The compatibility scoring uses a normalised name index so that minor
 spelling differences between the two data files (e.g. "Tomato" vs
 "Tomatoes") are handled transparently.
 """
 
-from collections import Counter
-from itertools import combinations, permutations
-from math import comb, factorial
+from datetime import date, timedelta
 
-from .calendar_utils import get_all_planting_windows, get_best_planting_method
-
-# If the brute-force search space exceeds this many candidate
-# assignments we fall back to a greedy heuristic instead.
-_MAX_BRUTE_FORCE = 100_000
+from .calendar_utils import parse_planting_windows
+from .timeline import FarmTimeline
 
 
 # -----------------------------------------------------------------------
@@ -56,11 +56,7 @@ def normalize_plant_name(name: str) -> str:
 # -----------------------------------------------------------------------
 
 class PlantCompatibilityIndex:
-    """Fast, normalisation-aware lookup for companion / antagonist data.
-
-    Wraps the raw ``compatible_plants`` and ``incompatible_plants`` dicts
-    from *plantCompatibility.py* and resolves name mismatches automatically.
-    """
+    """Fast, normalisation-aware lookup for companion / antagonist data."""
 
     def __init__(self, compatible_plants: dict, incompatible_plants: dict):
         self._compatible = compatible_plants
@@ -68,335 +64,330 @@ class PlantCompatibilityIndex:
         self._name_map = self._build_name_map()
 
     def _build_name_map(self) -> dict[str, str]:
-        """Map normalised names → original dict keys."""
         name_map: dict[str, str] = {}
         for name in set(self._compatible) | set(self._incompatible):
             name_map[normalize_plant_name(name)] = name
         return name_map
 
     def _resolve(self, name: str) -> str:
-        """Return the canonical (original-dict-key) version of *name*."""
         return self._name_map.get(normalize_plant_name(name), name)
 
     @staticmethod
     def _contains(plant: str, plant_list: list[str]) -> bool:
-        """Check membership using normalised comparison."""
         norm = normalize_plant_name(plant)
         return any(normalize_plant_name(p) == norm for p in plant_list)
 
     def check_compatibility(self, plant_a: str, plant_b: str) -> int:
         """Score how well two plants get along when planted adjacently.
 
-        Returns an integer:
-            * **+2** mutual companions  (both list each other)
-            * **+1** one-directional companion
-            *  **0** neutral
-            * **-3** one-directional antagonist
-            * **-6** mutual antagonists
-
-        Both directions (A→B *and* B→A) are checked so that data
-        asymmetries are handled gracefully.
+        +2 mutual companions, +1 one-directional, 0 neutral,
+        -3 one-directional antagonist, -6 mutual antagonists.
         """
         score = 0
         key_a = self._resolve(plant_a)
         key_b = self._resolve(plant_b)
 
-        # Companion checks
         if key_a in self._compatible and self._contains(plant_b, self._compatible[key_a]):
             score += 1
         if key_b in self._compatible and self._contains(plant_a, self._compatible[key_b]):
             score += 1
-
-        # Antagonist checks
         if key_a in self._incompatible and self._contains(plant_b, self._incompatible[key_a]):
             score -= 3
         if key_b in self._incompatible and self._contains(plant_a, self._incompatible[key_b]):
             score -= 3
-
         return score
 
     def get_compatible(self, plant: str) -> list[str]:
-        """Return the raw companion list for *plant* (empty if unknown)."""
         return self._compatible.get(self._resolve(plant), [])
 
     def get_incompatible(self, plant: str) -> list[str]:
-        """Return the raw antagonist list for *plant* (empty if unknown)."""
         return self._incompatible.get(self._resolve(plant), [])
 
 
 # -----------------------------------------------------------------------
-# Planner
+# Time-aware planner
 # -----------------------------------------------------------------------
 
+_DEFAULT_DURATION = 90
+
+
 class FarmPlanner:
-    """Assigns plants to plots and generates planting schedules.
+    """Assigns plants to (plot, time-window) slots with succession planting.
 
     Args:
-        farm_grid:  A ``FarmGrid`` with plots already defined.
-        compat:     A ``PlantCompatibilityIndex`` instance.
-        planting_data: The ``planting_data`` dict from *plantPlantTime.py*.
+        farm_grid:        A ``FarmGrid`` with plots defined.
+        compat:           A ``PlantCompatibilityIndex``.
+        planting_data:    Dict from *plantPlantTime.py*.
+        growth_durations: Dict from *plant_info.py* (plant name -> days).
     """
 
-    def __init__(self, farm_grid, compat: PlantCompatibilityIndex, planting_data: dict):
+    def __init__(self, farm_grid, compat: PlantCompatibilityIndex,
+                 planting_data: dict, growth_durations: dict[str, int]):
         self.grid = farm_grid
         self.compat = compat
         self.planting_data = planting_data
+        self.growth_durations = growth_durations
         self._planting_name_map = {
-            normalize_plant_name(name): name for name in planting_data
+            normalize_plant_name(n): n for n in planting_data
+        }
+        self._growth_name_map = {
+            normalize_plant_name(n): n for n in growth_durations
         }
 
-    # ----- scoring -----
+    # ---- public API ----
 
-    def score_assignment(self, assignment: dict[int, str]) -> int:
-        """Total compatibility score for a full plot→plant mapping.
-
-        Only adjacent plot pairs contribute to the score (each pair
-        counted once, not twice).
-        """
-        adjacency = self.grid.get_adjacency_map()
-        score = 0
-        seen: set[tuple[int, int]] = set()
-
-        for plot_id, plant in assignment.items():
-            for adj_id in adjacency.get(plot_id, set()):
-                if adj_id not in assignment:
-                    continue
-                pair = (min(plot_id, adj_id), max(plot_id, adj_id))
-                if pair in seen:
-                    continue
-                seen.add(pair)
-                score += self.compat.check_compatibility(plant, assignment[adj_id])
-
-        return score
-
-    # ----- assignment search -----
-
-    def suggest_assignment(self, selected_plants: list[str], year: int | None = None):
-        """Find the best plant→plot mapping (bootstrap mode).
-
-        Tries all feasible combinations and returns the one with the
-        highest adjacency-compatibility score.  Falls back to a greedy
-        heuristic for large search spaces.
+    def plan_year(self, selected_plants: list[str], year: int,
+                  start_month: int = 1) -> dict:
+        """Build a full-year planting plan (bootstrap mode).
 
         Args:
-            selected_plants: Plants the user wants to grow.
-            year: Optional planning year (reserved for window validation).
+            selected_plants: Ranked list — earlier = higher priority.
+            year:            Calendar year to plan for.
+            start_month:     Earliest month to consider (default January).
 
         Returns:
-            dict with keys ``assignment``, ``score``, ``unassigned``,
-            ``details``.
+            Plan dict ready for ``save_plan_json``.
         """
-        plot_ids = self.grid.get_plot_ids()
-        n_plots = len(plot_ids)
-        n_plants = len(selected_plants)
+        timeline = FarmTimeline(self.grid)
+        assigned: list[dict] = []
+        unassigned: list[str] = []
+        remaining = list(selected_plants)
 
-        if n_plots == 0 or n_plants == 0:
-            return self._empty_result(selected_plants)
-
-        k = min(n_plots, n_plants)
-
-        # Guard against combinatorial explosion
-        total = comb(n_plants, k) * comb(n_plots, k) * factorial(k)
-        if total > _MAX_BRUTE_FORCE:
-            return self._greedy_assignment(selected_plants, plot_ids)
-
-        best_assignment: dict[int, str] | None = None
-        best_score = float("-inf")
-        best_plant_combo: tuple[str, ...] | None = None
-
-        for plant_combo in combinations(selected_plants, k):
-            for plot_combo in combinations(plot_ids, k):
-                for perm in permutations(plant_combo):
-                    assignment = dict(zip(plot_combo, perm))
-                    s = self.score_assignment(assignment)
-                    if s > best_score:
-                        best_score = s
-                        best_assignment = assignment
-                        best_plant_combo = plant_combo
-
-        if best_assignment is None or best_plant_combo is None:
-            return self._empty_result(selected_plants)
-
-        unassigned = self._multiset_difference(selected_plants, list(best_plant_combo))
-        details = self._adjacency_details(best_assignment)
-
-        return {
-            "assignment": best_assignment,
-            "score": best_score,
-            "unassigned": unassigned,
-            "details": details,
-        }
-
-    def _greedy_assignment(self, selected_plants: list[str], plot_ids: list[int]):
-        """Greedy fallback for large farms.
-
-        Assigns one plant at a time, always picking the (plant, plot)
-        pair that adds the most compatibility with already-placed
-        neighbours.
-        """
-        adjacency = self.grid.get_adjacency_map()
-        assignment: dict[int, str] = {}
-        remaining_plants = list(selected_plants)
-        remaining_plots = list(plot_ids)
-
-        # Seed: first plant → first plot (arbitrary, no neighbours yet)
-        if remaining_plants and remaining_plots:
-            assignment[remaining_plots.pop(0)] = remaining_plants.pop(0)
-
-        while remaining_plants and remaining_plots:
-            best_s = float("-inf")
-            best_plant: str | None = None
-            best_plot: int | None = None
-
-            for plant in remaining_plants:
-                for plot in remaining_plots:
-                    s = sum(
-                        self.compat.check_compatibility(plant, assignment[adj])
-                        for adj in adjacency.get(plot, set())
-                        if adj in assignment
-                    )
-                    if s > best_s:
-                        best_s = s
-                        best_plant = plant
-                        best_plot = plot
-
-            if best_plant is not None and best_plot is not None:
-                assignment[best_plot] = best_plant
-                remaining_plants.remove(best_plant)
-                remaining_plots.remove(best_plot)
-            else:
+        while remaining:
+            pick = self._pick_next(remaining, year, timeline, start_month)
+            if pick is None:
+                unassigned.extend(remaining)
                 break
 
-        return {
-            "assignment": assignment,
-            "score": self.score_assignment(assignment),
-            "unassigned": remaining_plants,
-            "details": self._adjacency_details(assignment),
-        }
+            remaining.remove(pick["plant"])
 
-    # ----- schedule creation -----
+            if pick["plot_id"] is None:
+                unassigned.append(pick["plant"])
+            else:
+                timeline.add(pick["plot_id"], pick["plant"],
+                             pick["start"], pick["end"], pick["method"])
+                assigned.append(pick)
 
-    def create_schedule(self, assignment: dict[int, str], year: int):
-        """Build a calendar schedule for each assigned plot.
-
-        Returns a list of dicts with plot info, recommended planting
-        method/window, and all available windows.
-        """
-        schedule = []
-        for plot_id, plant in sorted(assignment.items()):
-            entry = {
-                "plot_id": plot_id,
-                "plant": plant,
-                "cell_count": len(self.grid.get_plot_cells(plot_id)),
-                "status": "planned",
-                "notes": "",
-                "windows": [],
-                "recommended": None,
-            }
-
-            plant_key = self._resolve_planting_key(plant)
-
-            for w in get_all_planting_windows(plant_key, self.planting_data, year):
-                entry["windows"].append(
-                    {
-                        "method": w["method"],
-                        "start": w["start"].isoformat(),
-                        "end": w["end"].isoformat(),
-                    }
-                )
-
-            best = get_best_planting_method(plant_key, self.planting_data, year)
-            if best:
-                entry["recommended"] = {
-                    "method": best["method"],
-                    "start": best["start"].isoformat(),
-                    "end": best["end"].isoformat(),
-                }
-            elif plant_key not in self.planting_data:
-                entry["notes"] = "No planting-window data found."
-
-            schedule.append(entry)
-
-        return schedule
-
-    # ----- full pipeline -----
-
-    def create_plan(self, selected_plants: list[str], year: int) -> dict:
-        """Run the complete planning pipeline (bootstrap mode).
-
-        1. Find optimal assignment
-        2. Build schedule with planting windows
-        3. Package everything into a dict ready for persistence
-
-        Returns:
-            A plan dict suitable for ``save_plan_json``.
-        """
-        result = self.suggest_assignment(selected_plants, year)
-        schedule = self.create_schedule(result["assignment"], year)
+        score = self._total_compat_score(timeline)
+        events = self._adjacency_events(timeline)
 
         return {
             "year": year,
             "mode": "bootstrap",
             "selected_plants": selected_plants,
-            "assignment": {str(k): v for k, v in result["assignment"].items()},
-            "score": result["score"],
-            "unassigned_plants": result["unassigned"],
-            "adjacency_details": [
+            "timeline": timeline.to_dict(),
+            "assigned": [
                 {
-                    "plot_a": d[0],
-                    "plot_b": d[1],
-                    "plant_a": d[2],
-                    "plant_b": d[3],
-                    "compatibility_score": d[4],
+                    "plant": a["plant"],
+                    "plot_id": a["plot_id"],
+                    "start": a["start"].isoformat(),
+                    "end": a["end"].isoformat(),
+                    "method": a["method"],
                 }
-                for d in result["details"]
+                for a in assigned
             ],
-            "schedule": schedule,
+            "unassigned_plants": unassigned,
+            "adjacency_events": events,
+            "score": score,
         }
 
-    # ----- internal helpers -----
+    def get_timeline(self, selected_plants: list[str], year: int,
+                     start_month: int = 1) -> FarmTimeline:
+        """Like plan_year but returns the raw FarmTimeline object
+        (useful for snapshot queries without going through JSON)."""
+        timeline = FarmTimeline(self.grid)
+        remaining = list(selected_plants)
 
-    def _adjacency_details(self, assignment: dict[int, str]):
-        """Build a list of (plot_a, plot_b, plant_a, plant_b, score) tuples."""
-        adjacency = self.grid.get_adjacency_map()
-        details = []
-        seen: set[tuple[int, int]] = set()
+        while remaining:
+            pick = self._pick_next(remaining, year, timeline, start_month)
+            if pick is None:
+                break
+            remaining.remove(pick["plant"])
+            if pick["plot_id"] is not None:
+                timeline.add(pick["plot_id"], pick["plant"],
+                             pick["start"], pick["end"], pick["method"])
+        return timeline
 
-        for plot_id, plant in assignment.items():
-            for adj_id in adjacency.get(plot_id, set()):
-                if adj_id not in assignment:
+    # ---- core scheduling logic ----
+
+    def _pick_next(self, remaining: list[str], year: int,
+                   timeline: FarmTimeline, start_month: int):
+        """Select the single best (plant, slot) to assign next.
+
+        Strategy: most-constrained-first (fewest valid options),
+        with user priority (position in *remaining*) as tiebreaker.
+        Among options for the chosen plant, pick the highest compatibility
+        score, then the earliest start date.
+        """
+        options_map: dict[str, list[dict]] = {}
+        for plant in remaining:
+            options_map[plant] = self._find_options(
+                plant, year, timeline, start_month
+            )
+
+        best_plant: str | None = None
+        best_option: dict | None = None
+        min_count = float("inf")
+
+        for plant in remaining:  # user-priority order
+            opts = options_map[plant]
+            if not opts:
+                continue
+            if len(opts) < min_count:
+                min_count = len(opts)
+                best_plant = plant
+                best_option = max(
+                    opts,
+                    key=lambda o: (o["score"], -o["start"].toordinal()),
+                )
+
+        if best_option is not None:
+            return best_option
+
+        # No remaining plant has any valid slot
+        return {
+            "plant": remaining[0],
+            "plot_id": None,
+            "start": None,
+            "end": None,
+            "method": None,
+        }
+
+    def _find_options(self, plant: str, year: int,
+                      timeline: FarmTimeline, start_month: int) -> list[dict]:
+        """All valid (plot, time-window) placements for *plant*."""
+        duration = self._get_duration(plant)
+        windows = self._outdoor_windows(plant, year)
+        if not windows:
+            return []
+
+        season_start = date(year, start_month, 1)
+        season_end = date(year, 12, 15)
+        options: list[dict] = []
+
+        for w in windows:
+            for pid, ptl in timeline.timelines.items():
+                earliest = max(
+                    w["start"],
+                    ptl.earliest_free_after(w["start"]),
+                    season_start,
+                )
+                if earliest > w["end"]:
                     continue
-                pair = (min(plot_id, adj_id), max(plot_id, adj_id))
-                if pair in seen:
-                    continue
-                seen.add(pair)
-                adj_plant = assignment[adj_id]
-                s = self.compat.check_compatibility(plant, adj_plant)
-                details.append((plot_id, adj_id, plant, adj_plant, s))
 
-        return details
+                end = earliest + timedelta(days=duration)
+                if end > season_end:
+                    continue
+                if not ptl.is_free_during(earliest, end):
+                    continue
+
+                score = self._score_placement(
+                    plant, pid, earliest, end, timeline
+                )
+                options.append({
+                    "plant": plant,
+                    "plot_id": pid,
+                    "start": earliest,
+                    "end": end,
+                    "score": score,
+                    "method": w["method"],
+                })
+
+        return options
+
+    def _score_placement(self, plant: str, plot_id: int,
+                         start: date, end: date,
+                         timeline: FarmTimeline) -> int:
+        """Compatibility score for placing *plant* during [start, end),
+        considering what is simultaneously growing in adjacent plots."""
+        score = 0
+        seen: set[str] = set()
+        for adj_plant in timeline.adjacent_plants_during(plot_id, start, end):
+            if adj_plant not in seen:
+                score += self.compat.check_compatibility(plant, adj_plant)
+                seen.add(adj_plant)
+        return score
+
+    # ---- summary / reporting helpers ----
+
+    def _total_compat_score(self, timeline: FarmTimeline) -> int:
+        """Sum pairwise compatibility for all simultaneously-adjacent
+        entries (each unique pair counted once)."""
+        score = 0
+        seen: set[tuple] = set()
+        for pid, tl in timeline.timelines.items():
+            for entry in tl.entries:
+                for adj_id in self.grid.get_adjacent_plots(pid):
+                    for ae in timeline.timelines[adj_id].overlapping_entries(
+                        entry["start"], entry["end"]
+                    ):
+                        pair = tuple(sorted([
+                            (pid, entry["plant"], entry["start"]),
+                            (adj_id, ae["plant"], ae["start"]),
+                        ]))
+                        if pair not in seen:
+                            seen.add(pair)
+                            score += self.compat.check_compatibility(
+                                entry["plant"], ae["plant"]
+                            )
+        return score
+
+    def _adjacency_events(self, timeline: FarmTimeline) -> list[dict]:
+        """Build a list of adjacency interactions for reporting."""
+        events: list[dict] = []
+        seen: set[tuple] = set()
+        for pid, tl in timeline.timelines.items():
+            for entry in tl.entries:
+                for adj_id in self.grid.get_adjacent_plots(pid):
+                    for ae in timeline.timelines[adj_id].overlapping_entries(
+                        entry["start"], entry["end"]
+                    ):
+                        pair = tuple(sorted([
+                            (pid, entry["plant"], entry["start"]),
+                            (adj_id, ae["plant"], ae["start"]),
+                        ]))
+                        if pair in seen:
+                            continue
+                        seen.add(pair)
+                        s = self.compat.check_compatibility(
+                            entry["plant"], ae["plant"]
+                        )
+                        events.append({
+                            "plot_a": pid,
+                            "plot_b": adj_id,
+                            "plant_a": entry["plant"],
+                            "plant_b": ae["plant"],
+                            "overlap_start": max(entry["start"], ae["start"]).isoformat(),
+                            "overlap_end": min(entry["end"], ae["end"]).isoformat(),
+                            "compatibility": s,
+                        })
+        return events
+
+    # ---- data resolution helpers ----
+
+    def _outdoor_windows(self, plant: str, year: int) -> list[dict]:
+        """Planting windows for transplant + direct_sow only."""
+        key = self._resolve_planting_key(plant)
+        entry = self.planting_data.get(key)
+        if not entry:
+            return []
+        windows: list[dict] = []
+        for method in ("transplant", "direct_sow"):
+            dates = entry.get(method, [])
+            if dates:
+                windows.extend(parse_planting_windows(dates, method, year))
+        windows.sort(key=lambda w: w["start"])
+        return windows
+
+    def _get_duration(self, plant: str) -> int:
+        if plant in self.growth_durations:
+            return self.growth_durations[plant]
+        key = self._growth_name_map.get(normalize_plant_name(plant))
+        if key:
+            return self.growth_durations[key]
+        return _DEFAULT_DURATION
 
     def _resolve_planting_key(self, plant: str) -> str:
         if plant in self.planting_data:
             return plant
         return self._planting_name_map.get(normalize_plant_name(plant), plant)
-
-    @staticmethod
-    def _multiset_difference(items: list[str], used: list[str]) -> list[str]:
-        remaining = Counter(items)
-        remaining.subtract(used)
-        leftover = []
-        for item in items:
-            if remaining[item] > 0:
-                leftover.append(item)
-                remaining[item] -= 1
-        return leftover
-
-    @staticmethod
-    def _empty_result(selected_plants):
-        return {
-            "assignment": {},
-            "score": 0,
-            "unassigned": list(selected_plants),
-            "details": [],
-        }

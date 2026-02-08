@@ -6,7 +6,9 @@ Exports the main classes and persistence functions so consumers can do::
 """
 
 from .grid import FarmGrid
+from .timeline import PlotTimeline, FarmTimeline
 from .planner import FarmPlanner, PlantCompatibilityIndex
+from .plant_info import growth_durations
 from .persistence import (
     save_grid_csv,
     load_grid_csv,
