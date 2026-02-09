@@ -1,5 +1,5 @@
 # rasterye
-Garden Planner by Lossy Compression for Hack The Coast
+Garden Planner by Lossy Compression for Hack The Coast. Won 1st in Sustainability & Environment stream
 
 ## Visual Grid Editor
 
