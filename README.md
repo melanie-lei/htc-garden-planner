@@ -1,4 +1,4 @@
-# htc-garden-planner
+# rasterye
 Garden Planner by Lossy Compression for Hack The Coast
 
 ## Visual Grid Editor
